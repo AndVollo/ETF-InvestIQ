@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -17,6 +17,7 @@ class Holding(Base, TimestampMixin):
     units: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     avg_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     target_pct: Mapped[float] = mapped_column(Float, nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     bucket: Mapped["GoalBucket"] = relationship(  # type: ignore[name-defined]

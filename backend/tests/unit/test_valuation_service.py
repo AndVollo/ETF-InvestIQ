@@ -71,11 +71,11 @@ def test_z_score_flat_prices():
 
 
 def test_z_score_current_at_mean():
-    # Symmetric prices: current = mean → z = 0
-    prices = list(range(80, 120)) + list(range(119, 79, -1))  # 80 prices, symmetric
+    # 100 prices symmetric around 100 — last value equals the mean
+    prices = list(range(51, 101)) + list(range(100, 50, -1))  # 100 prices, last=51
+    assert len(prices) >= 90  # must exceed MIN_DAYS_FOR_Z_SCORE
     z = compute_z_score(prices)
     assert z is not None
-    # Last price is 80, mean is ~99.5 — not symmetric last, but should be computable
     assert isinstance(z, float)
 
 
@@ -95,11 +95,11 @@ def test_z_score_low_price_is_negative():
 
 
 def test_z_score_known_value():
-    # prices: 98, 100, 102 → mean=100, stdev≈2, last=102 → z≈1.0
+    # [98, 100, 102] * 40 → mean=100, last=102, stdev≈1.633 → z≈1.22
     prices = [98.0, 100.0, 102.0] * 40  # 120 values
     z = compute_z_score(prices)
     assert z is not None
-    assert abs(z - 0.0) < 1.0  # current (102) repeating pattern → z should be near 1 or 0
+    assert 1.0 < z < 1.5  # (102 - 100) / stdev([98,100,102]) ≈ 1.22
 
 
 # ── compute_52w_percentile() ──────────────────────────────────────────────────
@@ -129,13 +129,14 @@ def test_52w_flat_prices():
 
 
 def test_52w_uses_last_252_days():
-    # Old prices out of 52w window — only last 252 matter
+    # Last 252 of (300 old + 3 recent) = old[51:] + recent = 249×50 + [90,110,100]
+    # min=50, max=110, current=100 → (100-50)/(110-50)*100 = 83.33
     old = [50.0] * 300
     recent = [90.0, 110.0, 100.0]
     prices = old + recent
     pct = compute_52w_percentile(prices)
-    assert pct == 50.0  # only last 252 used: [110.0, 100.0, 90.0 copies…]
-    # Actually last 252 of (old+recent) = last 252 = all old[52:] + recent
+    assert pct is not None
+    assert abs(pct - 83.33) < 0.1
 
 
 # ── compute_sma200_deviation() ────────────────────────────────────────────────

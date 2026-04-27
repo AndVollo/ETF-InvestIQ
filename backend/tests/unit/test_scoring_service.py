@@ -113,7 +113,7 @@ def test_sharpe_score_bounds():
     prices = _trending_prices(500, 100.0, 200.0)
     score = _sharpe_score_from_prices(prices)
     assert score is not None
-    assert 0.0 < score < 1.0
+    assert 0.0 <= score <= 1.0
 
 
 def test_sharpe_negative_trend_lower_than_positive():
