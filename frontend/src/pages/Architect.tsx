@@ -1,0 +1,237 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useBuckets } from '@/api/buckets'
+import {
+  useStartArchitectSession,
+  useArchitectSession,
+  useIngestCandidates,
+  useEngineerPrompt,
+  useIngestAllocation,
+  useConfirmArchitectSession,
+} from '@/api/architect'
+import type { AllocationItem } from '@/types/api'
+import { Button } from '@/components/common/Button'
+import { Input } from '@/components/common/Input'
+import { Badge } from '@/components/common/Badge'
+import { Toast } from '@/components/common/Toast'
+
+type Step = 1 | 2 | 3 | 4 | 5
+
+export default function Architect() {
+  const { t } = useTranslation()
+  const { data: bucketsData } = useBuckets()
+  const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
+
+  const [step, setStep] = useState<Step>(1)
+  const [bucketId, setBucketId] = useState<number>(buckets[0]?.id ?? 0)
+  const [sessionId, setSessionId] = useState<number>(0)
+  const [goalDesc, setGoalDesc] = useState('')
+  const [targetAmount, setTargetAmount] = useState<number | undefined>()
+  const [monthlyDeposit, setMonthlyDeposit] = useState<number | undefined>()
+  const [tickersInput, setTickersInput] = useState('')
+  const [allocationJson, setAllocationJson] = useState('')
+  const [rationale, setRationale] = useState('')
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+
+  const startSession = useStartArchitectSession()
+  const { data: session } = useArchitectSession(sessionId)
+  const ingestCandidates = useIngestCandidates(sessionId)
+  const { data: engineerPrompt } = useEngineerPrompt(sessionId)
+  const ingestAllocation = useIngestAllocation(sessionId)
+  const confirmSession = useConfirmArchitectSession(sessionId)
+
+  const STEP_TITLES: Record<Step, string> = {
+    1: t('architect.step1_title'),
+    2: t('architect.step2_title'),
+    3: t('architect.step3_title'),
+    4: t('architect.step4_title'),
+    5: t('architect.step5_title'),
+  }
+
+  const handleStart = async () => {
+    const res = await startSession.mutateAsync({
+      bucket_id: bucketId,
+      investor_profile: {
+        goal_description: goalDesc,
+        target_amount_ils: targetAmount,
+        monthly_deposit_ils: monthlyDeposit,
+      },
+    })
+    setSessionId(res.session_id)
+    setStep(2)
+  }
+
+  const handleIngestCandidates = async () => {
+    const tickers = tickersInput.split(/[\s,]+/).filter(Boolean).map((tk) => tk.toUpperCase())
+    await ingestCandidates.mutateAsync(tickers)
+    setStep(3)
+  }
+
+  const handleIngestAllocation = async () => {
+    let parsed: { allocation: AllocationItem[]; rationale?: string }
+    try {
+      parsed = JSON.parse(allocationJson) as { allocation: AllocationItem[]; rationale?: string }
+    } catch {
+      setToast({ msg: 'Invalid JSON', type: 'error' })
+      return
+    }
+    const res = await ingestAllocation.mutateAsync({
+      allocation: parsed.allocation,
+      rationale: parsed.rationale ?? rationale,
+    })
+    if (res.status === 'PENDING_REVIEW') {
+      setToast({ msg: t('architect.cooling_off', { time: res.cooling_off_until ?? '' }), type: 'error' })
+    } else {
+      setStep(5)
+    }
+  }
+
+  const handleConfirm = async () => {
+    const res = await confirmSession.mutateAsync()
+    setToast({ msg: t('architect.confirmed', { n: res.holdings_written }), type: 'success' })
+  }
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('architect.title')}</h1>
+
+      <div className="flex items-center gap-2 mb-8">
+        {([1, 2, 3, 4, 5] as Step[]).map((s) => (
+          <div
+            key={s}
+            className={`flex-1 h-1.5 rounded-full ${s <= step ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700'}`}
+          />
+        ))}
+      </div>
+
+      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{STEP_TITLES[step]}</h2>
+
+      {step === 1 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('buckets.title')}</label>
+            <select
+              className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800"
+              value={bucketId}
+              onChange={(e) => setBucketId(Number(e.target.value))}
+            >
+              {buckets.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+          <Input label={t('architect.goal_desc')} value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
+          <Input
+            label={t('architect.target_amount_ils')}
+            type="number"
+            value={targetAmount ?? ''}
+            onChange={(e) => setTargetAmount(e.target.value ? Number(e.target.value) : undefined)}
+          />
+          <Input
+            label={t('architect.monthly_deposit_ils')}
+            type="number"
+            value={monthlyDeposit ?? ''}
+            onChange={(e) => setMonthlyDeposit(e.target.value ? Number(e.target.value) : undefined)}
+          />
+          <Button onClick={handleStart} loading={startSession.isPending}>{t('architect.start')}</Button>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="flex flex-col gap-4">
+          <Input
+            label="Tickers"
+            placeholder={t('architect.tickers_placeholder')}
+            value={tickersInput}
+            onChange={(e) => setTickersInput(e.target.value)}
+          />
+          <Button onClick={handleIngestCandidates} loading={ingestCandidates.isPending}>
+            {t('architect.ingest')}
+          </Button>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="flex flex-col gap-4">
+          {session?.shortlist && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="font-semibold text-success mb-2">{t('architect.accepted')}</p>
+                {session.shortlist.filter((c) => c.is_valid).map((c) => (
+                  <div key={c.ticker} className="flex items-center gap-2 mb-1">
+                    <span className="font-mono">{c.ticker}</span>
+                    {c.composite_score != null && <Badge color="green">{c.composite_score.toFixed(1)}</Badge>}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="font-semibold text-danger mb-2">{t('architect.rejected')}</p>
+                {session.shortlist.filter((c) => !c.is_valid).map((c) => (
+                  <div key={c.ticker} className="flex items-center gap-2 mb-1">
+                    <span className="font-mono">{c.ticker}</span>
+                    {c.rejection_reason && <Badge color="red">{c.rejection_reason}</Badge>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {engineerPrompt && (
+            <div>
+              <p className="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Engineer Prompt</p>
+              <pre className="text-xs bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap">
+                {engineerPrompt.engineer_prompt}
+              </pre>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-2"
+                onClick={() => { void navigator.clipboard.writeText(engineerPrompt.engineer_prompt) }}
+              >
+                {t('architect.copy_prompt')}
+              </Button>
+            </div>
+          )}
+
+          <Button onClick={() => setStep(4)}>{t('common.next')}</Button>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('architect.paste_json')}</label>
+            <textarea
+              className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 font-mono h-48"
+              value={allocationJson}
+              onChange={(e) => setAllocationJson(e.target.value)}
+              placeholder='{"allocation":[{"ticker":"VTI","weight_pct":60}],"rationale":"..."}'
+            />
+          </div>
+          <Input
+            label={t('architect.rationale')}
+            value={rationale}
+            onChange={(e) => setRationale(e.target.value)}
+          />
+          <Button onClick={handleIngestAllocation} loading={ingestAllocation.isPending}>
+            {t('architect.ingest')}
+          </Button>
+        </div>
+      )}
+
+      {step === 5 && (
+        <div className="flex flex-col gap-4">
+          {session?.final_allocation?.map((a) => (
+            <div key={a.ticker} className="flex justify-between text-sm py-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span className="font-mono">{a.ticker}</span>
+              <span>{a.weight_pct}%</span>
+            </div>
+          ))}
+          <Button onClick={handleConfirm} loading={confirmSession.isPending}>
+            {t('architect.confirm_session')}
+          </Button>
+        </div>
+      )}
+
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+    </div>
+  )
+}
