@@ -24,8 +24,14 @@ from app.schemas.architect import (
     EngineerPromptResponse,
     InvestorProfile,
     AllocationIngestResponse,
+    UcitsAdvisory,
 )
-from app.services.universe_service import get_etf_metadata, get_universe_tickers, is_blacklisted
+from app.services.universe_service import (
+    get_etf_metadata,
+    get_ucits_alternatives,
+    get_universe_tickers,
+    is_blacklisted,
+)
 
 logger = get_logger(__name__)
 
@@ -341,6 +347,47 @@ async def get_engineer_prompt(session_id: int, db: AsyncSession) -> EngineerProm
     return EngineerPromptResponse(session_id=session_id, engineer_prompt=prompt, status=session.status)
 
 
+def check_ucits_eligibility(
+    allocation_map: dict[str, float],
+    is_us_citizen: bool,
+) -> UcitsAdvisory | None:
+    """Inform the user about UCITS-domiciled peers when ≥50% of the allocation
+    is US-domiciled and at least one ticker has a peer in the universe.
+
+    Suppressed entirely for self-declared US citizens — those investors face
+    PFIC tax treatment on foreign funds, so UCITS suggestions are dangerous.
+    Returns None when no advisory is warranted.
+    """
+    if is_us_citizen or not allocation_map:
+        return None
+
+    us_pct = 0.0
+    for ticker, pct in allocation_map.items():
+        meta = get_etf_metadata(ticker)
+        if meta and meta.get("domicile") == "US":
+            us_pct += pct
+
+    if us_pct < 50.0:
+        return None
+
+    suggestions: dict[str, list[str]] = {}
+    for ticker in allocation_map:
+        alts = get_ucits_alternatives(ticker)
+        if alts:
+            suggestions[ticker] = alts
+
+    if not suggestions:
+        return None
+
+    return UcitsAdvisory(
+        message_key="info.ucits_alternative_available",
+        params={
+            "us_pct": round(us_pct, 1),
+            "suggestions": suggestions,
+        },
+    )
+
+
 async def ingest_allocation(
     session_id: int,
     allocation: list[AllocationItem],
@@ -411,12 +458,19 @@ async def ingest_allocation(
     session.updated_at = datetime.now(timezone.utc)
     await db.flush()
 
+    # UCITS advisory (informational only — never blocks confirm).
+    from app.services import settings_service
+    is_us_citizen_val = await settings_service.get_setting("is_us_citizen", db)
+    is_us_citizen = bool(is_us_citizen_val) if is_us_citizen_val is not None else False
+    ucits_advisory = check_ucits_eligibility(holdings_map, is_us_citizen)
+
     return AllocationIngestResponse(
         session_id=session_id,
         status=new_status,
         cap_warnings=[w.message_key for w in cap_warnings],
         cooling_off_until=cooling_off_until,
         validation_passed=True,
+        ucits_advisory=ucits_advisory,
     )
 
 

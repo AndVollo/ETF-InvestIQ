@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -61,12 +62,23 @@ class AllocationIngestRequest(BaseModel):
     rationale: str = Field(min_length=10, max_length=2000)
 
 
+class UcitsAdvisory(BaseModel):
+    """Informational nudge: allocation is heavily US-domiciled while UCITS peers exist.
+
+    Never blocks confirm. Suppressed when the user marks themselves a US citizen
+    (PFIC risk).
+    """
+    message_key: str
+    params: dict[str, Any]
+
+
 class AllocationIngestResponse(BaseModel):
     session_id: int
     status: str                   # PENDING_REVIEW | CONFIRMED_READY
     cap_warnings: list[str]
     cooling_off_until: datetime | None   # None if no cooling-off required
     validation_passed: bool
+    ucits_advisory: UcitsAdvisory | None = None
 
 
 class ArchitectConfirmResponse(BaseModel):

@@ -27,6 +27,7 @@ SETTING_KEYS = frozenset(
         "sector_thresholds_override",
         "theme",              # "light" | "dark" | "system"
         "rebalance_interval_months",
+        "is_us_citizen",      # bool — disables UCITS suggestions (PFIC risk)
     ]
 )
 
@@ -39,4 +40,5 @@ DEFAULT_SETTINGS: dict[str, object] = {
     "sector_thresholds_override": None,
     "theme": "system",
     "rebalance_interval_months": 3,
+    "is_us_citizen": False,
 }
