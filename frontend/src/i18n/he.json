@@ -170,7 +170,9 @@
     "breach": "חריגה!",
     "data_estimated": "(מוערך)",
     "no_holdings": "אין אחזקות עם שווי לחישוב סקטורים",
-    "refresh": "רענן נתוני סקטור"
+    "refresh": "רענן נתוני סקטור",
+    "hidden_stocks_title": "מניות עם חשיפה מוסתרת (כפילות בין ETFs)",
+    "hidden_stocks_line": "מופיעה ב-{{count}} ETFs ({{sources}}) — חשיפה כוללת {{pct}}%"
   },
   "settings": {
     "title": "הגדרות",

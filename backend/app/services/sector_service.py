@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.logging import get_logger
-from app.schemas.sector import BucketSectorResponse, CapWarning, SectorExposureItem
+from app.schemas.sector import BucketSectorResponse, CapWarning, HiddenStock, SectorExposureItem
 from app.services.universe_service import get_etf_metadata
 from app.services.yfinance_client import yfinance_client
 
@@ -44,8 +44,59 @@ _BUCKET_SECTOR_FALLBACK: dict[str, str] = {
 }
 
 
+_SINGLE_STOCK_WARNING_PCT = 5.0
+
+
 def _normalize_sector(raw: str) -> str:
     return _SECTOR_ALIASES.get(raw.lower().strip(), raw.strip().title())
+
+
+def detect_hidden_stocks(
+    holdings_with_top: list[dict[str, Any]],
+) -> list[HiddenStock]:
+    """Identify single stocks that exceed 5% portfolio exposure across ≥2 ETFs.
+
+    Each input dict must carry:
+        - ticker: str
+        - portfolio_pct: float            (the holding's share of the bucket, 0–100)
+        - top_holdings: list[{"symbol": str, "weight": float (0–1)}]
+    """
+    stock_totals: dict[str, float] = {}
+    stock_sources: dict[str, list[str]] = {}
+
+    for h in holdings_with_top:
+        ticker = h["ticker"]
+        portfolio_pct = h["portfolio_pct"]
+        for stock in h.get("top_holdings", []):
+            symbol = stock.get("symbol")
+            weight = stock.get("weight", 0.0)
+            if not symbol or weight <= 0:
+                continue
+            # weight is fractional (0-1), portfolio_pct is 0-100 → result in %
+            contribution = weight * portfolio_pct
+            stock_totals[symbol] = stock_totals.get(symbol, 0.0) + contribution
+            sources = stock_sources.setdefault(symbol, [])
+            if ticker not in sources:
+                sources.append(ticker)
+
+    hidden: list[HiddenStock] = []
+    for symbol, total_pct in stock_totals.items():
+        sources = stock_sources[symbol]
+        if total_pct >= _SINGLE_STOCK_WARNING_PCT and len(sources) > 1:
+            hidden.append(HiddenStock(
+                symbol=symbol,
+                total_exposure_pct=round(total_pct, 2),
+                appears_in=sources,
+                message_key="warning.sector.hidden_stock",
+                params={
+                    "symbol": symbol,
+                    "pct": round(total_pct, 2),
+                    "count": len(sources),
+                    "sources": ", ".join(sources),
+                },
+            ))
+    hidden.sort(key=lambda h: -h.total_exposure_pct)
+    return hidden
 
 
 async def get_bucket_sector_exposure(
@@ -61,12 +112,14 @@ async def get_bucket_sector_exposure(
             total_value_usd=0.0,
             sector_exposures=[],
             cap_warnings=[],
+            hidden_stocks=[],
             data_stale=False,
         )
 
     aggregated: dict[str, float] = {}
     data_stale = False
     estimated_sectors: set[str] = set()
+    holdings_with_top: list[dict[str, Any]] = []
 
     for h in enriched:
         ticker = h["ticker"]
@@ -76,6 +129,7 @@ async def get_bucket_sector_exposure(
 
         sector_data = await yfinance_client.get_sector_data(ticker, db)
         raw_weights: dict[str, float] = sector_data.get("sector_weights", {})
+        top_holdings_raw = sector_data.get("top_holdings", []) or []
 
         if not raw_weights:
             data_stale = True
@@ -89,6 +143,21 @@ async def get_bucket_sector_exposure(
         for raw_sector, weight in raw_weights.items():
             sector = _normalize_sector(raw_sector)
             aggregated[sector] = aggregated.get(sector, 0.0) + weight * portfolio_weight * 100
+
+        # Normalize top_holdings into the shape detect_hidden_stocks expects.
+        normalized_top: list[dict[str, Any]] = []
+        for entry in top_holdings_raw:
+            if not isinstance(entry, dict):
+                continue
+            symbol = entry.get("symbol") or entry.get("Symbol")
+            weight = entry.get("weight") or entry.get("Holding Percent") or 0.0
+            if symbol and weight:
+                normalized_top.append({"symbol": symbol, "weight": float(weight)})
+        holdings_with_top.append({
+            "ticker": ticker,
+            "portfolio_pct": portfolio_weight * 100,
+            "top_holdings": normalized_top,
+        })
 
     # Build sorted response
     exposures = [
@@ -110,12 +179,14 @@ async def get_bucket_sector_exposure(
         item.data_estimated = any_estimated
 
     cap_warnings = _check_bucket_caps(enriched)
+    hidden_stocks = detect_hidden_stocks(holdings_with_top)
 
     return BucketSectorResponse(
         bucket_id=bucket_id,
         total_value_usd=round(total_value, 4),
         sector_exposures=exposures,
         cap_warnings=cap_warnings,
+        hidden_stocks=hidden_stocks,
         data_stale=data_stale,
     )
 

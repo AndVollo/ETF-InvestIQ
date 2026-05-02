@@ -17,11 +17,22 @@ class CapWarning(BaseModel):
     params: dict[str, object]
 
 
+class HiddenStock(BaseModel):
+    """A single stock that surfaces with combined ≥5% portfolio exposure
+    via two or more ETFs in the bucket."""
+    symbol: str
+    total_exposure_pct: float
+    appears_in: list[str]
+    message_key: str
+    params: dict[str, object]
+
+
 class BucketSectorResponse(BaseModel):
     bucket_id: int
     total_value_usd: float
     sector_exposures: list[SectorExposureItem]
     cap_warnings: list[CapWarning]
+    hidden_stocks: list[HiddenStock]
     data_stale: bool
 
 

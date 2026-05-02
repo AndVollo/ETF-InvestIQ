@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.sector_service import check_target_allocation_caps, _normalize_sector
+from app.services.sector_service import (
+    _normalize_sector,
+    check_target_allocation_caps,
+    detect_hidden_stocks,
+)
 
 
 class TestNormalizeSector:
@@ -58,3 +62,78 @@ class TestCheckTargetAllocationCaps:
         # Unknown tickers have no metadata → count as zero toward caps
         warnings = check_target_allocation_caps({"FAKE_ETF": 100.0})
         assert warnings == []
+
+
+class TestDetectHiddenStocks:
+    """Stocks that surface ≥5% via two or more ETFs in the bucket."""
+
+    def test_apple_via_two_etfs_flagged(self):
+        # VTI 50% × AAPL 7% = 3.5%; VOO 40% × AAPL 6.5% = 2.6% → 6.1% combined
+        holdings = [
+            {
+                "ticker": "VTI",
+                "portfolio_pct": 50.0,
+                "top_holdings": [{"symbol": "AAPL", "weight": 0.07}],
+            },
+            {
+                "ticker": "VOO",
+                "portfolio_pct": 40.0,
+                "top_holdings": [{"symbol": "AAPL", "weight": 0.065}],
+            },
+        ]
+        hidden = detect_hidden_stocks(holdings)
+        assert len(hidden) == 1
+        h = hidden[0]
+        assert h.symbol == "AAPL"
+        assert h.total_exposure_pct == pytest.approx(6.1, abs=0.01)
+        assert set(h.appears_in) == {"VTI", "VOO"}
+        assert h.message_key == "warning.sector.hidden_stock"
+
+    def test_single_etf_source_not_flagged(self):
+        # Even at 10% combined exposure, only one ETF source → not "hidden"
+        holdings = [
+            {
+                "ticker": "VTI",
+                "portfolio_pct": 100.0,
+                "top_holdings": [{"symbol": "AAPL", "weight": 0.10}],
+            },
+        ]
+        assert detect_hidden_stocks(holdings) == []
+
+    def test_below_5pct_threshold_not_flagged(self):
+        # Two sources but only 3% combined → ignored
+        holdings = [
+            {"ticker": "VTI", "portfolio_pct": 50.0, "top_holdings": [{"symbol": "MSFT", "weight": 0.03}]},
+            {"ticker": "VOO", "portfolio_pct": 30.0, "top_holdings": [{"symbol": "MSFT", "weight": 0.05}]},
+        ]
+        assert detect_hidden_stocks(holdings) == []
+
+    def test_empty_top_holdings_returns_empty(self):
+        holdings = [{"ticker": "BND", "portfolio_pct": 100.0, "top_holdings": []}]
+        assert detect_hidden_stocks(holdings) == []
+
+    def test_results_sorted_by_exposure_desc(self):
+        holdings = [
+            {"ticker": "A", "portfolio_pct": 50.0, "top_holdings": [
+                {"symbol": "X", "weight": 0.20}, {"symbol": "Y", "weight": 0.10},
+            ]},
+            {"ticker": "B", "portfolio_pct": 50.0, "top_holdings": [
+                {"symbol": "X", "weight": 0.05}, {"symbol": "Y", "weight": 0.10},
+            ]},
+        ]
+        hidden = detect_hidden_stocks(holdings)
+        assert [h.symbol for h in hidden] == ["X", "Y"]
+
+    def test_zero_weight_entries_skipped(self):
+        holdings = [
+            {"ticker": "VTI", "portfolio_pct": 50.0, "top_holdings": [
+                {"symbol": "GHOST", "weight": 0.0},
+                {"symbol": "REAL", "weight": 0.07},
+            ]},
+            {"ticker": "VOO", "portfolio_pct": 50.0, "top_holdings": [
+                {"symbol": "REAL", "weight": 0.07},
+            ]},
+        ]
+        hidden = detect_hidden_stocks(holdings)
+        assert len(hidden) == 1
+        assert hidden[0].symbol == "REAL"

@@ -170,7 +170,9 @@
     "breach": "Breach!",
     "data_estimated": "(estimated)",
     "no_holdings": "No holdings with value to compute sectors",
-    "refresh": "Refresh Sector Data"
+    "refresh": "Refresh Sector Data",
+    "hidden_stocks_title": "Hidden single-stock concentration (across ETFs)",
+    "hidden_stocks_line": "appears in {{count}} ETFs ({{sources}}) — combined exposure {{pct}}%"
   },
   "settings": {
     "title": "Settings",

@@ -184,11 +184,20 @@ export interface CapWarning {
   params: Record<string, unknown>
 }
 
+export interface HiddenStock {
+  symbol: string
+  total_exposure_pct: number
+  appears_in: string[]
+  message_key: string
+  params: Record<string, unknown>
+}
+
 export interface BucketSectorResponse {
   bucket_id: number
   total_value_usd: number
   sector_exposures: SectorExposureItem[]
   cap_warnings: CapWarning[]
+  hidden_stocks: HiddenStock[]
   data_stale: boolean
 }
 

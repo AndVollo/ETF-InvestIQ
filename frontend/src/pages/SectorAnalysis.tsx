@@ -36,6 +36,27 @@ export default function SectorAnalysis() {
         </div>
       ))}
 
+      {data?.hidden_stocks && data.hidden_stocks.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-2">
+            ⚠️ {t('sectors.hidden_stocks_title')}
+          </p>
+          <ul className="space-y-1 text-sm text-amber-900 dark:text-amber-100">
+            {data.hidden_stocks.map((h) => (
+              <li key={h.symbol}>
+                <span className="font-mono font-semibold">{h.symbol}</span>
+                {' — '}
+                {t('sectors.hidden_stocks_line', {
+                  pct: h.total_exposure_pct.toFixed(2),
+                  count: h.appears_in.length,
+                  sources: h.appears_in.join(', '),
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!data || data.sector_exposures.length === 0 ? (
         <EmptyState message={t('sectors.no_holdings')} />
       ) : (
