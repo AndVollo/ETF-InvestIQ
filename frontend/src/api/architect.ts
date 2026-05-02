@@ -6,6 +6,7 @@ import type {
   ArchitectSessionResponse,
   ArchitectStartResponse,
   CandidateIngestResponse,
+  DrawdownSimulationResponse,
 } from '@/types/api'
 
 export const useArchitectSession = (sessionId: number) =>
@@ -62,6 +63,17 @@ export const useIngestAllocation = (sessionId: number) => {
     mutationFn: (data) =>
       client
         .post<AllocationIngestResponse>(`/architect/sessions/${sessionId}/allocation`, data)
+        .then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['architect-session', sessionId] }),
+  })
+}
+
+export const useReviewDrawdown = (sessionId: number) => {
+  const qc = useQueryClient()
+  return useMutation<DrawdownSimulationResponse, unknown, void>({
+    mutationFn: () =>
+      client
+        .post<DrawdownSimulationResponse>(`/architect/sessions/${sessionId}/drawdown`)
         .then(r => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['architect-session', sessionId] }),
   })

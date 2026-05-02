@@ -292,6 +292,7 @@ export interface ArchitectSessionResponse {
   shortlist: CandidateDetail[] | null
   final_allocation: AllocationItem[] | null
   rationale: string | null
+  drawdown_acknowledged_at: string | null
   created_at: string
   updated_at: string
 }

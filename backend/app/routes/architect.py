@@ -15,6 +15,7 @@ from app.schemas.architect import (
     CandidateIngestResponse,
     EngineerPromptResponse,
 )
+from app.schemas.drawdown import DrawdownSimulationResponse
 from app.services import architect_service
 
 router = APIRouter(prefix="/architect", tags=["architect"])
@@ -69,6 +70,16 @@ async def ingest_allocation(
         rationale=payload.rationale,
         db=db,
     )
+
+
+@router.post("/sessions/{session_id}/drawdown", response_model=DrawdownSimulationResponse)
+async def review_drawdown(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+) -> DrawdownSimulationResponse:
+    """Run a drawdown simulation against the proposed allocation and mark
+    the session as drawdown-reviewed. Required before /confirm succeeds."""
+    return await architect_service.review_drawdown(session_id, db)
 
 
 @router.post("/sessions/{session_id}/confirm", response_model=ArchitectConfirmResponse)

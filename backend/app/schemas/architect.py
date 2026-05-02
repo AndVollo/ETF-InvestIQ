@@ -96,5 +96,6 @@ class ArchitectSessionResponse(BaseModel):
     shortlist: list[CandidateDetail] | None
     final_allocation: list[AllocationItem] | None
     rationale: str | None
+    drawdown_acknowledged_at: datetime | None = None
     created_at: datetime
     updated_at: datetime

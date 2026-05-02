@@ -251,6 +251,92 @@ async def simulate_bucket(bucket_id: int, db: AsyncSession) -> DrawdownSimulatio
     )
 
 
+async def simulate_proposed_allocation(
+    allocation: dict[str, float],
+    portfolio_value_usd: float,
+    db: AsyncSession,
+) -> DrawdownSimulationResponse:
+    """Run the same 4-scenario simulation against a *proposed* allocation
+    (target weights only) without writing it to holdings.
+
+    Used by the Architect's pre-confirm drawdown review (PRD §12 Sprint 6,
+    "אינטגרציה עם Architect — חובה לפני שמירה"). Does not persist to
+    DrawdownSimulation; the architect session itself records the
+    acknowledgement.
+    """
+    scenarios_out: list[DrawdownScenario] = []
+    worst_pct: float | None = None
+    worst_amount: float | None = None
+
+    for name, peak_date, trough_date in SCENARIOS:
+        holding_details: list[DrawdownHoldingDetail] = []
+        portfolio_drawdown_sum = 0.0
+        weight_sum = 0.0
+
+        for ticker, weight_pct in allocation.items():
+            inception_year = _INCEPTION_YEAR.get(ticker)
+            use_proxy = inception_year is not None and peak_date.year < inception_year
+            price_ticker = _PROXY_MAP.get(ticker, ticker) if use_proxy else ticker
+
+            await _ensure_prices_in_db(price_ticker, peak_date, trough_date, db)
+            peak_price = await _price_nearest(price_ticker, peak_date, db)
+            trough_price = await _price_nearest(price_ticker, trough_date, db)
+
+            if peak_price and trough_price and peak_price > 0:
+                scenario_dd = (trough_price - peak_price) / peak_price * 100
+                data_available = True
+            else:
+                meta = get_etf_metadata(ticker)
+                bucket_key = meta.get("bucket", "") if meta else ""
+                defaults = _CATEGORY_DEFAULTS.get(bucket_key, _CATEGORY_DEFAULTS["GLOBAL_CORE"])
+                idx = _SCENARIO_INDEX.get(name, 0)
+                scenario_dd = defaults[idx]
+                data_available = False
+
+            holding_details.append(DrawdownHoldingDetail(
+                ticker=ticker,
+                proxy_ticker=price_ticker if use_proxy else None,
+                proxy_used=use_proxy,
+                data_available=data_available,
+                scenario_drawdown_pct=round(scenario_dd, 2),
+                holding_weight_pct=round(weight_pct, 4),
+            ))
+
+            if weight_pct > 0:
+                portfolio_drawdown_sum += scenario_dd * weight_pct
+                weight_sum += weight_pct
+
+        if weight_sum > 0:
+            portfolio_dd_pct = portfolio_drawdown_sum / weight_sum
+            portfolio_loss = portfolio_value_usd * portfolio_dd_pct / 100
+        else:
+            portfolio_dd_pct = 0.0
+            portfolio_loss = 0.0
+
+        scenarios_out.append(DrawdownScenario(
+            name=name,
+            period_start=peak_date,
+            period_end=trough_date,
+            portfolio_drawdown_pct=round(portfolio_dd_pct, 2),
+            portfolio_loss_usd=round(portfolio_loss, 2),
+            holdings=holding_details,
+        ))
+
+        if worst_pct is None or portfolio_dd_pct < worst_pct:
+            worst_pct = portfolio_dd_pct
+            worst_amount = portfolio_loss
+
+    return DrawdownSimulationResponse(
+        simulation_id=0,  # not persisted
+        bucket_id=0,
+        portfolio_value_usd=round(portfolio_value_usd, 4),
+        scenarios=scenarios_out,
+        worst_case_pct=round(worst_pct, 2) if worst_pct is not None else None,
+        worst_case_amount_usd=round(worst_amount, 2) if worst_amount is not None else None,
+        simulated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
 async def get_latest_simulation(bucket_id: int, db: AsyncSession) -> DrawdownSimulation | None:
     result = await db.execute(
         select(DrawdownSimulation)

@@ -25,6 +25,9 @@ class ArchitectSession(Base, TimestampMixin):
     sector_report_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     drawdown_report_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    drawdown_acknowledged_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     bucket: Mapped["GoalBucket | None"] = relationship(  # type: ignore[name-defined]
         "GoalBucket", back_populates="architect_sessions"

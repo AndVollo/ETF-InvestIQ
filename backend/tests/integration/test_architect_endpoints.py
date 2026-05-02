@@ -131,6 +131,10 @@ class TestArchitectSessionFlow:
         alloc_data = alloc_r.json()
         assert alloc_data["validation_passed"] is True
 
+        # Drawdown review (Sprint 6 gate — mandatory before confirm)
+        dd_r = await client.post(f"/api/v1/architect/sessions/{sid}/drawdown")
+        assert dd_r.status_code == 200
+
         confirm_r = await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
         assert confirm_r.status_code == 200
         confirm_data = confirm_r.json()
@@ -159,6 +163,92 @@ class TestArchitectSessionFlow:
             "rationale": "This should fail due to allocation sum.",
         })
         assert r.status_code == 422
+
+    async def test_confirm_blocks_when_drawdown_not_reviewed(self, client: AsyncClient):
+        """Sprint 6 gate: confirm must fail with 422 when drawdown wasn't reviewed."""
+        bid = await _make_long_bucket(client)
+        sr = await client.post("/api/v1/architect/sessions", json={
+            "bucket_id": bid,
+            "investor_profile": {"goal_description": "Drawdown gate test"},
+        })
+        sid = sr.json()["session_id"]
+        await client.post(f"/api/v1/architect/sessions/{sid}/candidates", json={"tickers": ["VTI", "BND"]})
+        await client.post(f"/api/v1/architect/sessions/{sid}/allocation", json={
+            "allocation": [
+                {"ticker": "VTI", "weight_pct": 60.0},
+                {"ticker": "BND", "weight_pct": 40.0},
+            ],
+            "rationale": "Sixty-forty initial allocation.",
+        })
+
+        # No /drawdown call — confirm must reject.
+        r = await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
+        assert r.status_code == 422
+        assert r.json()["message_key"] == "error.architect_drawdown_review_required"
+
+    async def test_drawdown_review_unlocks_confirm(self, client: AsyncClient):
+        """After /drawdown, /confirm succeeds, and the session reflects the timestamp."""
+        bid = await _make_long_bucket(client)
+        sr = await client.post("/api/v1/architect/sessions", json={
+            "bucket_id": bid,
+            "investor_profile": {"goal_description": "Drawdown unlock test"},
+        })
+        sid = sr.json()["session_id"]
+        await client.post(f"/api/v1/architect/sessions/{sid}/candidates", json={"tickers": ["VTI", "BND"]})
+        await client.post(f"/api/v1/architect/sessions/{sid}/allocation", json={
+            "allocation": [
+                {"ticker": "VTI", "weight_pct": 60.0},
+                {"ticker": "BND", "weight_pct": 40.0},
+            ],
+            "rationale": "Standard long-term allocation.",
+        })
+
+        dd = await client.post(f"/api/v1/architect/sessions/{sid}/drawdown")
+        assert dd.status_code == 200
+        body = dd.json()
+        assert "scenarios" in body
+        assert len(body["scenarios"]) == 4
+        assert body["worst_case_pct"] is not None
+
+        sess = await client.get(f"/api/v1/architect/sessions/{sid}")
+        assert sess.json()["drawdown_acknowledged_at"] is not None
+
+        confirm = await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
+        assert confirm.status_code == 200
+
+    async def test_new_allocation_resets_drawdown_ack(self, client: AsyncClient):
+        """Re-submitting allocation invalidates the prior drawdown acknowledgement."""
+        bid = await _make_long_bucket(client)
+        sr = await client.post("/api/v1/architect/sessions", json={
+            "bucket_id": bid,
+            "investor_profile": {"goal_description": "Reset test"},
+        })
+        sid = sr.json()["session_id"]
+        await client.post(f"/api/v1/architect/sessions/{sid}/candidates", json={"tickers": ["VTI", "BND"]})
+        await client.post(f"/api/v1/architect/sessions/{sid}/allocation", json={
+            "allocation": [
+                {"ticker": "VTI", "weight_pct": 60.0},
+                {"ticker": "BND", "weight_pct": 40.0},
+            ],
+            "rationale": "First allocation.",
+        })
+        await client.post(f"/api/v1/architect/sessions/{sid}/drawdown")
+
+        # New allocation should clear the ack.
+        await client.post(f"/api/v1/architect/sessions/{sid}/allocation", json={
+            "allocation": [
+                {"ticker": "VTI", "weight_pct": 70.0},
+                {"ticker": "BND", "weight_pct": 30.0},
+            ],
+            "rationale": "Slightly more aggressive after thinking.",
+        })
+        sess = await client.get(f"/api/v1/architect/sessions/{sid}")
+        assert sess.json()["drawdown_acknowledged_at"] is None
+
+        # Confirm without re-reviewing → blocked.
+        r = await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
+        assert r.status_code == 422
+        assert r.json()["message_key"] == "error.architect_drawdown_review_required"
 
     async def test_get_session_returns_state(self, client: AsyncClient):
         bid = await _make_long_bucket(client)

@@ -456,6 +456,8 @@ async def ingest_allocation(
     session.rationale_text = rationale
     session.status = new_status
     session.updated_at = datetime.now(timezone.utc)
+    # New allocation invalidates any prior drawdown acknowledgement.
+    session.drawdown_acknowledged_at = None
     await db.flush()
 
     # UCITS advisory (informational only — never blocks confirm).
@@ -474,6 +476,45 @@ async def ingest_allocation(
     )
 
 
+async def review_drawdown(
+    session_id: int,
+    db: AsyncSession,
+):
+    """Run a drawdown simulation against the session's proposed allocation
+    and mark it as reviewed. Required before confirm_session() will succeed.
+
+    Returns the simulation result (DrawdownSimulationResponse).
+    """
+    from app.services import drawdown_service
+
+    session = await _get_session(session_id, db)
+    if not session.final_allocation_json:
+        raise ValidationError("error.architect_no_allocation", {"session_id": session_id})
+    if session.bucket_id is None:
+        raise ValidationError("error.architect_no_bucket", {"session_id": session_id})
+
+    allocation_items = [AllocationItem(**a) for a in json.loads(session.final_allocation_json)]
+    allocation_map = {a.ticker: a.weight_pct for a in allocation_items}
+
+    # Use the bucket's current value as the simulation base; if empty, $100k baseline
+    # so percentages are still meaningful.
+    from app.services import bucket_service
+    total_value, _ = await bucket_service.get_holdings_with_drift(session.bucket_id, db)
+    base = total_value if total_value > 0 else 100_000.0
+
+    result = await drawdown_service.simulate_proposed_allocation(
+        allocation_map, base, db,
+    )
+
+    # Do NOT touch session.updated_at here — that field anchors the cooling-off
+    # window from the original allocation ingestion. Only the dedicated
+    # drawdown_acknowledged_at moves.
+    session.drawdown_acknowledged_at = datetime.now(timezone.utc)
+    await db.flush()
+
+    return result
+
+
 async def confirm_session(session_id: int, db: AsyncSession) -> ArchitectConfirmResponse:
     session = await _get_session(session_id, db)
     if session.status not in ("DRAFT", "PENDING_REVIEW"):
@@ -482,6 +523,12 @@ async def confirm_session(session_id: int, db: AsyncSession) -> ArchitectConfirm
         })
     if not session.final_allocation_json:
         raise ValidationError("error.architect_no_allocation", {"session_id": session_id})
+
+    # Drawdown gate (PRD §12 Sprint 6 — חובה לפני שמירה).
+    if session.drawdown_acknowledged_at is None:
+        raise ValidationError("error.architect_drawdown_review_required", {
+            "session_id": session_id,
+        })
 
     # Cooling-off enforcement
     if session.status == "PENDING_REVIEW":
@@ -577,6 +624,7 @@ async def get_session(session_id: int, db: AsyncSession) -> ArchitectSessionResp
         shortlist=shortlist,
         final_allocation=allocation,
         rationale=session.rationale_text,
+        drawdown_acknowledged_at=session.drawdown_acknowledged_at,
         created_at=session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=timezone.utc),
         updated_at=session.updated_at if session.updated_at.tzinfo else session.updated_at.replace(tzinfo=timezone.utc),
     )

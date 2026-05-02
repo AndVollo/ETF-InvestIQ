@@ -7,15 +7,16 @@ import {
   useIngestCandidates,
   useEngineerPrompt,
   useIngestAllocation,
+  useReviewDrawdown,
   useConfirmArchitectSession,
 } from '@/api/architect'
-import type { AllocationItem, UcitsAdvisory } from '@/types/api'
+import type { AllocationItem, DrawdownSimulationResponse, UcitsAdvisory } from '@/types/api'
 import { Button } from '@/components/common/Button'
 import { Input } from '@/components/common/Input'
 import { Badge } from '@/components/common/Badge'
 import { Toast } from '@/components/common/Toast'
 
-type Step = 1 | 2 | 3 | 4 | 5
+type Step = 1 | 2 | 3 | 4 | 5 | 6
 
 export default function Architect() {
   const { t } = useTranslation()
@@ -35,12 +36,14 @@ export default function Architect() {
   const [ucitsAdvisory, setUcitsAdvisory] = useState<UcitsAdvisory | null>(null)
   const [ucitsDismissed, setUcitsDismissed] = useState(false)
   const [showAllUcits, setShowAllUcits] = useState(false)
+  const [drawdownReport, setDrawdownReport] = useState<DrawdownSimulationResponse | null>(null)
 
   const startSession = useStartArchitectSession()
   const { data: session } = useArchitectSession(sessionId)
   const ingestCandidates = useIngestCandidates(sessionId)
   const { data: engineerPrompt } = useEngineerPrompt(sessionId)
   const ingestAllocation = useIngestAllocation(sessionId)
+  const reviewDrawdown = useReviewDrawdown(sessionId)
   const confirmSession = useConfirmArchitectSession(sessionId)
 
   const STEP_TITLES: Record<Step, string> = {
@@ -49,6 +52,7 @@ export default function Architect() {
     3: t('architect.step3_title'),
     4: t('architect.step4_title'),
     5: t('architect.step5_title'),
+    6: t('architect.step6_title'),
   }
 
   const handleStart = async () => {
@@ -85,11 +89,18 @@ export default function Architect() {
     setUcitsAdvisory(res.ucits_advisory)
     setUcitsDismissed(false)
     setShowAllUcits(false)
+    setDrawdownReport(null)  // new allocation invalidates prior drawdown review
     if (res.status === 'PENDING_REVIEW') {
       setToast({ msg: t('architect.cooling_off', { time: res.cooling_off_until ?? '' }), type: 'error' })
     } else {
       setStep(5)
     }
+  }
+
+  const handleReviewDrawdown = async () => {
+    const res = await reviewDrawdown.mutateAsync()
+    setDrawdownReport(res)
+    setStep(6)
   }
 
   const handleConfirm = async () => {
@@ -274,6 +285,57 @@ export default function Architect() {
               <span>{a.weight_pct}%</span>
             </div>
           ))}
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t('architect.drawdown_review_hint')}
+          </p>
+          <Button onClick={handleReviewDrawdown} loading={reviewDrawdown.isPending}>
+            {t('architect.review_drawdown')}
+          </Button>
+        </div>
+      )}
+
+      {step === 6 && (
+        <div className="flex flex-col gap-4">
+          <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">
+              ⚠️ {t('architect.drawdown_report_title')}
+            </p>
+            {drawdownReport && (
+              <>
+                <p className="text-sm text-amber-900 dark:text-amber-100 mb-3">
+                  {t('architect.drawdown_report_worst', {
+                    pct: drawdownReport.worst_case_pct?.toFixed(1) ?? '—',
+                    amount: drawdownReport.worst_case_amount_usd?.toFixed(0) ?? '—',
+                  })}
+                </p>
+                <table className="w-full text-xs text-amber-900 dark:text-amber-100">
+                  <thead>
+                    <tr className="border-b border-amber-300 dark:border-amber-700">
+                      <th className="text-start py-1">{t('architect.drawdown_scenario')}</th>
+                      <th className="text-end py-1">{t('architect.drawdown_loss_pct')}</th>
+                      <th className="text-end py-1">{t('architect.drawdown_loss_usd')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drawdownReport.scenarios.map((s) => (
+                      <tr key={s.name}>
+                        <td className="py-1">{s.name}</td>
+                        <td className="text-end py-1 font-mono">
+                          {s.portfolio_drawdown_pct?.toFixed(1) ?? '—'}%
+                        </td>
+                        <td className="text-end py-1 font-mono">
+                          ${s.portfolio_loss_usd?.toFixed(0) ?? '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {t('architect.confirm_acknowledgement')}
+          </p>
           <Button onClick={handleConfirm} loading={confirmSession.isPending}>
             {t('architect.confirm_session')}
           </Button>

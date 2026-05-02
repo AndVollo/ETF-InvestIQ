@@ -142,7 +142,8 @@
     "step2_title": "הכנס מועמדים",
     "step3_title": "בדוק ניתוח",
     "step4_title": "הזן הקצאה",
-    "step5_title": "אשר",
+    "step5_title": "סקור הקצאה",
+    "step6_title": "סקור Drawdown ואשר",
     "goal_desc": "תאר את המטרה",
     "target_amount_ils": "סכום יעד (₪)",
     "monthly_deposit_ils": "הפקדה חודשית (₪)",
@@ -161,7 +162,15 @@
     "ucits_advisory_body": "ההקצאה שלך כוללת {{us_pct}}% ETFs אמריקאים. למקצתם יש מקבילות UCITS איריות, שמובילות ל-15% ניכוי במקור (במקום 30%) ולדחיית מס (Accumulating).",
     "ucits_disclaimer": "מידע זה אינו ייעוץ מס. התייעץ עם רואה חשבון לפני החלטת השקעה.",
     "ucits_show_all": "הצג כל ההצעות",
-    "ucits_dismiss": "התעלם"
+    "ucits_dismiss": "התעלם",
+    "review_drawdown": "סקור סימולציית Drawdown",
+    "drawdown_review_hint": "לפני אישור — בדוק כמה כסף עלול להפסיד בתרחישי משבר היסטוריים.",
+    "drawdown_report_title": "Drawdown — התיק המוצע מול 4 משברים היסטוריים",
+    "drawdown_report_worst": "התרחיש הגרוע ביותר: {{pct}}% (הפסד של ${{amount}})",
+    "drawdown_scenario": "תרחיש",
+    "drawdown_loss_pct": "הפסד %",
+    "drawdown_loss_usd": "הפסד $",
+    "confirm_acknowledgement": "בלחיצה על אישור — אתה מאשר שהבנת את גודל ההפסד הפוטנציאלי."
   },
   "sectors": {
     "title": "ניתוח סקטורים",

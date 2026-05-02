@@ -55,7 +55,7 @@ class TestCoolingOff:
         assert body["cooling_off_until"] is None
 
     async def test_initial_allocation_confirm_succeeds_immediately(self, client: AsyncClient):
-        """First allocation can be confirmed without any wait."""
+        """First allocation can be confirmed without any cooling-off wait."""
         bid = await _make_long_bucket(client)
         sid = await _start_session(client, bid)
         await _add_candidates(client, sid)
@@ -67,6 +67,8 @@ class TestCoolingOff:
             ],
             "rationale": "Initial 60/40.",
         })
+        # Sprint 6 gate: drawdown review is mandatory before confirm.
+        await client.post(f"/api/v1/architect/sessions/{sid}/drawdown")
 
         r = await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
         assert r.status_code == 200
@@ -88,6 +90,7 @@ class TestCoolingOff:
             ],
             "rationale": "Initial baseline.",
         })
+        await client.post(f"/api/v1/architect/sessions/{sid}/drawdown")
         await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
 
         # Second session — large shift
@@ -119,6 +122,7 @@ class TestCoolingOff:
             ],
             "rationale": "Initial baseline.",
         })
+        await client.post(f"/api/v1/architect/sessions/{sid}/drawdown")
         await client.post(f"/api/v1/architect/sessions/{sid}/confirm")
 
         sid2 = await _start_session(client, bid)
@@ -132,6 +136,7 @@ class TestCoolingOff:
             "rationale": "Large shift — triggers PENDING_REVIEW.",
         })
         assert alloc.json()["status"] == "PENDING_REVIEW"
+        await client.post(f"/api/v1/architect/sessions/{sid2}/drawdown")
 
         # Immediate confirm must fail with cooling-off error
         r = await client.post(f"/api/v1/architect/sessions/{sid2}/confirm")
