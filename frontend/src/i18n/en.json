@@ -115,7 +115,25 @@
     "score": "Score",
     "ter": "TER",
     "valuation": "Valuation",
-    "details": "Details"
+    "details": "Details",
+    "category": "Category",
+    "domicile": "Domicile",
+    "filterPlaceholder": "Filter by ticker or category…",
+    "compositeScore": "Composite Score",
+    "componentScores": "Component Scores",
+    "costScore": "Cost",
+    "sharpeScore": "Sharpe 3y",
+    "trackingError": "Tracking Error",
+    "liquidityAum": "Liquidity / AUM",
+    "zScore": "Z-Score",
+    "percentile52w": "52-week percentile",
+    "sma200Dev": "SMA200 Deviation",
+    "filter_domicile_all": "All",
+    "filter_domicile_ucits": "UCITS only",
+    "filter_domicile_us": "US only",
+    "badge_ucits_acc": "UCITS · Acc",
+    "badge_ucits_dist": "UCITS · Dist",
+    "badge_us_dist": "US · Dist"
   },
   "architect": {
     "title": "Portfolio Architect",
@@ -138,7 +156,12 @@
     "rationale": "Rationale",
     "confirm_session": "Confirm Change",
     "cooling_off": "Large change — must wait until {{time}}",
-    "confirmed": "Portfolio updated! {{n}} holdings written."
+    "confirmed": "Portfolio updated! {{n}} holdings written.",
+    "ucits_advisory_title": "Tax-saving opportunity",
+    "ucits_advisory_body": "{{us_pct}}% of your allocation is in US-domiciled ETFs. Several have Irish UCITS peers that pay 15% withholding (vs 30%) and defer Israeli tax (Accumulating).",
+    "ucits_disclaimer": "This is not tax advice. Consult an accountant before investing.",
+    "ucits_show_all": "Show all suggestions",
+    "ucits_dismiss": "Dismiss"
   },
   "sectors": {
     "title": "Sector Analysis",
@@ -165,7 +188,13 @@
     "test_connection": "Test Connection",
     "vault_path": "Vault Path",
     "journal_subfolder": "Journal Subfolder",
-    "saved": "Saved"
+    "saved": "Saved",
+    "tax_status_section": "Tax Status",
+    "us_citizen_label": "US citizen (PFIC risk)",
+    "us_citizen_help": "When checked, the system will not suggest Irish UCITS alternatives due to PFIC tax risk."
+  },
+  "info": {
+    "ucits_alternative_available": "{{us_pct}}% of your allocation is US-domiciled ETFs. Some have Irish UCITS peers that may save on tax."
   },
   "audit": {
     "title": "Decision Log",

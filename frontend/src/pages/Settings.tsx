@@ -110,6 +110,28 @@ export default function Settings() {
                 <option value="ILS">{t('common.ils')}</option>
               </select>
             </SettingRow>
+
+            <div className="pt-6 mt-6 border-t border-gray-200 dark:border-gray-700">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">
+                {t('settings.tax_status_section')}
+              </h2>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={Boolean(settings['is_us_citizen'])}
+                  onChange={(e) => save('is_us_citizen', e.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm text-gray-900 dark:text-gray-100">
+                    {t('settings.us_citizen_label')}
+                  </span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-md">
+                    {t('settings.us_citizen_help')}
+                  </span>
+                </span>
+              </label>
+            </div>
           </>
         )}
 

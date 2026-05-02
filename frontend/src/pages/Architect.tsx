@@ -9,7 +9,7 @@ import {
   useIngestAllocation,
   useConfirmArchitectSession,
 } from '@/api/architect'
-import type { AllocationItem } from '@/types/api'
+import type { AllocationItem, UcitsAdvisory } from '@/types/api'
 import { Button } from '@/components/common/Button'
 import { Input } from '@/components/common/Input'
 import { Badge } from '@/components/common/Badge'
@@ -32,6 +32,9 @@ export default function Architect() {
   const [allocationJson, setAllocationJson] = useState('')
   const [rationale, setRationale] = useState('')
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [ucitsAdvisory, setUcitsAdvisory] = useState<UcitsAdvisory | null>(null)
+  const [ucitsDismissed, setUcitsDismissed] = useState(false)
+  const [showAllUcits, setShowAllUcits] = useState(false)
 
   const startSession = useStartArchitectSession()
   const { data: session } = useArchitectSession(sessionId)
@@ -79,6 +82,9 @@ export default function Architect() {
       allocation: parsed.allocation,
       rationale: parsed.rationale ?? rationale,
     })
+    setUcitsAdvisory(res.ucits_advisory)
+    setUcitsDismissed(false)
+    setShowAllUcits(false)
     if (res.status === 'PENDING_REVIEW') {
       setToast({ msg: t('architect.cooling_off', { time: res.cooling_off_until ?? '' }), type: 'error' })
     } else {
@@ -219,6 +225,49 @@ export default function Architect() {
 
       {step === 5 && (
         <div className="flex flex-col gap-4">
+          {ucitsAdvisory && !ucitsDismissed && (
+            <div
+              role="region"
+              aria-label="UCITS advisory"
+              className="rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 p-4"
+            >
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-1">
+                ℹ️ {t('architect.ucits_advisory_title')}
+              </p>
+              <p className="text-sm text-emerald-900 dark:text-emerald-100 mb-3">
+                {t('architect.ucits_advisory_body', { us_pct: ucitsAdvisory.params.us_pct })}
+              </p>
+              <ul className="text-sm text-emerald-900 dark:text-emerald-100 space-y-1 mb-3">
+                {Object.entries(ucitsAdvisory.params.suggestions)
+                  .slice(0, showAllUcits ? undefined : 3)
+                  .map(([usTicker, alts]) => (
+                    <li key={usTicker} className="font-mono">
+                      • {usTicker} → {alts.join(' / ')}
+                    </li>
+                  ))}
+              </ul>
+              <p className="text-xs text-emerald-700 dark:text-emerald-300 mb-3">
+                {t('architect.ucits_disclaimer')}
+              </p>
+              <div className="flex gap-2">
+                {!showAllUcits && Object.keys(ucitsAdvisory.params.suggestions).length > 3 && (
+                  <button
+                    onClick={() => setShowAllUcits(true)}
+                    className="text-xs px-3 py-1 rounded border border-emerald-400 text-emerald-700 dark:text-emerald-200 dark:border-emerald-600"
+                  >
+                    {t('architect.ucits_show_all')}
+                  </button>
+                )}
+                <button
+                  onClick={() => setUcitsDismissed(true)}
+                  className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
+                >
+                  {t('architect.ucits_dismiss')}
+                </button>
+              </div>
+            </div>
+          )}
+
           {session?.final_allocation?.map((a) => (
             <div key={a.ticker} className="flex justify-between text-sm py-1.5 border-b border-gray-100 dark:border-gray-700">
               <span className="font-mono">{a.ticker}</span>

@@ -5,8 +5,26 @@ import type { ETFScoreResponse } from '@/types/api'
 import { Badge } from '@/components/common/Badge'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { Modal } from '@/components/common/Modal'
+import { useUiStore } from '@/store/uiStore'
 
 type ScoreColor = 'green' | 'yellow' | 'red' | 'gray'
+
+function DomicileBadge({ etf }: { etf: ETFScoreResponse }) {
+  const { t } = useTranslation()
+  if (etf.domicile === 'IE') {
+    const key = etf.distribution === 'Accumulating' ? 'badge_ucits_acc' : 'badge_ucits_dist'
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+        🇮🇪 {t(`universe.${key}`)}
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+      🇺🇸 {t('universe.badge_us_dist')}
+    </span>
+  )
+}
 
 function scoreColor(score: number | null): ScoreColor {
   if (score == null) return 'gray'
@@ -130,31 +148,56 @@ export default function UniverseBrowser() {
   const { data, isLoading } = useUniverse()
   const [filter, setFilter] = useState('')
   const [selectedEtf, setSelectedEtf] = useState<ETFScoreResponse | null>(null)
+  const domicileFilter = useUiStore((s) => s.domicileFilter)
+  const setDomicileFilter = useUiStore((s) => s.setDomicileFilter)
 
   const allEtfs: ETFScoreResponse[] = data
     ? Object.values(data.buckets).flat()
     : []
 
-  const items = allEtfs.filter(
-    (e) =>
+  const items = allEtfs.filter((e) => {
+    const textMatch =
       !filter ||
       e.ticker.toLowerCase().includes(filter.toLowerCase()) ||
-      e.bucket.toLowerCase().includes(filter.toLowerCase()),
-  )
+      e.bucket.toLowerCase().includes(filter.toLowerCase())
+    const domicileMatch =
+      domicileFilter === 'all' ||
+      (domicileFilter === 'ucits' && e.ucits) ||
+      (domicileFilter === 'us' && e.domicile === 'US')
+    return textMatch && domicileMatch
+  })
 
   if (isLoading) return <LoadingSpinner className="py-32" />
+
+  const filterButton = (value: typeof domicileFilter, label: string) => (
+    <button
+      onClick={() => setDomicileFilter(value)}
+      className={`px-3 py-1.5 text-xs rounded-md border ${
+        domicileFilter === value
+          ? 'bg-primary-600 text-white border-primary-600'
+          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+      }`}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('universe.title')}</h1>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row gap-3">
         <input
-          className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm bg-white dark:bg-gray-800"
+          className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm bg-white dark:bg-gray-800"
           placeholder={t('universe.filterPlaceholder')}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
+        <div className="flex gap-2">
+          {filterButton('all', t('universe.filter_domicile_all'))}
+          {filterButton('ucits', t('universe.filter_domicile_ucits'))}
+          {filterButton('us', t('universe.filter_domicile_us'))}
+        </div>
       </div>
 
       <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -163,6 +206,7 @@ export default function UniverseBrowser() {
             <tr className="bg-gray-50 dark:bg-gray-900 text-left text-gray-500 text-xs uppercase">
               <th className="px-4 py-3">Ticker</th>
               <th className="px-4 py-3">{t('universe.category')}</th>
+              <th className="px-4 py-3">{t('universe.domicile')}</th>
               <th className="px-4 py-3">{t('universe.ter')}</th>
               <th className="px-4 py-3">{t('universe.score')}</th>
             </tr>
@@ -176,6 +220,7 @@ export default function UniverseBrowser() {
               >
                 <td className="px-4 py-3 font-mono font-semibold">{etf.ticker}</td>
                 <td className="px-4 py-3 text-gray-500">{etf.bucket}</td>
+                <td className="px-4 py-3"><DomicileBadge etf={etf} /></td>
                 <td className="px-4 py-3">
                   {etf.ter != null ? `${(etf.ter * 100).toFixed(2)}%` : t('common.na')}
                 </td>

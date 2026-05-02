@@ -128,9 +128,16 @@ export interface DepositLogResponse {
 }
 
 // ── Universe ──────────────────────────────────────────────────────────────────
+export type Domicile = 'US' | 'IE' | 'LU'
+export type Distribution = 'Distributing' | 'Accumulating'
+
 export interface ETFScoreResponse {
   ticker: string
   bucket: string
+  isin: string | null
+  domicile: Domicile
+  distribution: Distribution
+  ucits: boolean
   ter: number | null
   composite_score: number | null
   component_scores: {
@@ -244,12 +251,21 @@ export interface AllocationItem {
   weight_pct: number
 }
 
+export interface UcitsAdvisory {
+  message_key: string
+  params: {
+    us_pct: number
+    suggestions: Record<string, string[]>
+  }
+}
+
 export interface AllocationIngestResponse {
   session_id: number
   status: string
   cap_warnings: string[]
   cooling_off_until: string | null
   validation_passed: boolean
+  ucits_advisory: UcitsAdvisory | null
 }
 
 export interface ArchitectConfirmResponse {

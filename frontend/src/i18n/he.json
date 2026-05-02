@@ -115,7 +115,25 @@
     "score": "ציון",
     "ter": "דמי ניהול",
     "valuation": "הערכה",
-    "details": "פרטים"
+    "details": "פרטים",
+    "category": "קטגוריה",
+    "domicile": "ארץ התאגדות",
+    "filterPlaceholder": "סנן לפי טיקר או קטגוריה…",
+    "compositeScore": "ציון מורכב",
+    "componentScores": "ציוני רכיבים",
+    "costScore": "עלות",
+    "sharpeScore": "Sharpe 3y",
+    "trackingError": "Tracking Error",
+    "liquidityAum": "נזילות / AUM",
+    "zScore": "Z-Score",
+    "percentile52w": "אחוזון 52 שבועות",
+    "sma200Dev": "סטייה מ-SMA 200",
+    "filter_domicile_all": "הכל",
+    "filter_domicile_ucits": "UCITS בלבד",
+    "filter_domicile_us": "US בלבד",
+    "badge_ucits_acc": "UCITS · Acc",
+    "badge_ucits_dist": "UCITS · Dist",
+    "badge_us_dist": "US · Dist"
   },
   "architect": {
     "title": "ארכיטקט תיק",
@@ -138,7 +156,12 @@
     "rationale": "הסבר",
     "confirm_session": "אשר שינוי",
     "cooling_off": "שינוי גדול — יש להמתין עד {{time}}",
-    "confirmed": "התיק עודכן! {{n}} אחזקות נכתבו."
+    "confirmed": "התיק עודכן! {{n}} אחזקות נכתבו.",
+    "ucits_advisory_title": "הזדמנות לחיסכון במס",
+    "ucits_advisory_body": "ההקצאה שלך כוללת {{us_pct}}% ETFs אמריקאים. למקצתם יש מקבילות UCITS איריות, שמובילות ל-15% ניכוי במקור (במקום 30%) ולדחיית מס (Accumulating).",
+    "ucits_disclaimer": "מידע זה אינו ייעוץ מס. התייעץ עם רואה חשבון לפני החלטת השקעה.",
+    "ucits_show_all": "הצג כל ההצעות",
+    "ucits_dismiss": "התעלם"
   },
   "sectors": {
     "title": "ניתוח סקטורים",
@@ -165,7 +188,13 @@
     "test_connection": "בדוק חיבור",
     "vault_path": "נתיב Vault",
     "journal_subfolder": "תת-תיקייה",
-    "saved": "נשמר"
+    "saved": "נשמר",
+    "tax_status_section": "מצב מס",
+    "us_citizen_label": "אזרח/ית ארה\"ב (PFIC risk)",
+    "us_citizen_help": "כשמסומן, המערכת לא תציע מקבילות UCITS איריות בגלל סיכון PFIC."
+  },
+  "info": {
+    "ucits_alternative_available": "ההקצאה שלך כוללת {{us_pct}}% ETFs אמריקאים. למקצתם יש מקבילות UCITS איריות שיכולות לחסוך במס."
   },
   "audit": {
     "title": "יומן החלטות",
