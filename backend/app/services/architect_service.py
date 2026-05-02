@@ -474,6 +474,28 @@ async def confirm_session(session_id: int, db: AsyncSession) -> ArchitectConfirm
     session.updated_at = now
     await db.flush()
 
+    # Obsidian journal entry (best-effort, never blocks)
+    from app.db.models.bucket import GoalBucket
+    from app.services import obsidian_service, settings_service
+    bucket_row = await db.get(GoalBucket, bucket_id)
+    bucket_name = bucket_row.name if bucket_row else f"Bucket {bucket_id}"
+    vault_path = await settings_service.get_setting_str("obsidian_vault_path", db)
+    journal_subfolder = await settings_service.get_setting_str(
+        "obsidian_journal_subfolder", db, default="Investment Journal"
+    )
+    await obsidian_service.write_architect_journal(
+        bucket_name=bucket_name,
+        session_id=session_id,
+        status="CONFIRMED",
+        goal_description="",
+        allocation=[item.model_dump() for item in allocation],
+        rationale=session.rationale_text or "",
+        cap_warnings=None,
+        cooling_off_until=None,
+        vault_path=vault_path,
+        journal_subfolder=journal_subfolder,
+    )
+
     logger.info("architect_confirmed", session_id=session_id, bucket_id=bucket_id, holdings=len(allocation))
     return ArchitectConfirmResponse(
         session_id=session_id,
