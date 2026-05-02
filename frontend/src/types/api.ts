@@ -271,6 +271,32 @@ export interface ArchitectSessionResponse {
   updated_at: string
 }
 
+// ── Dividends ─────────────────────────────────────────────────────────────────
+export interface HoldingDividend {
+  ticker: string
+  units: number
+  forward_yield_pct: number | null
+  annual_income_usd: number
+  data_available: boolean
+}
+
+export interface DividendAnnualResponse {
+  bucket_id: number
+  total_annual_usd: number
+  holdings: HoldingDividend[]
+}
+
+export interface DividendRecord {
+  date: string
+  amount_usd: number
+}
+
+export interface DividendHistoryResponse {
+  ticker: string
+  years: number
+  records: DividendRecord[]
+}
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 export interface SettingResponse {
   key: string

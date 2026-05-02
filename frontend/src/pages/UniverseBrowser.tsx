@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useUniverse } from '@/api/universe'
+import { useUniverse, useValuation } from '@/api/universe'
 import type { ETFScoreResponse } from '@/types/api'
 import { Badge } from '@/components/common/Badge'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { Modal } from '@/components/common/Modal'
 
 type ScoreColor = 'green' | 'yellow' | 'red' | 'gray'
 
@@ -14,10 +15,121 @@ function scoreColor(score: number | null): ScoreColor {
   return 'red'
 }
 
+function valuationColor(cls: string | undefined): ScoreColor {
+  if (cls === 'CHEAP') return 'green'
+  if (cls === 'FAIR') return 'yellow'
+  if (cls === 'EXPENSIVE') return 'red'
+  return 'gray'
+}
+
+function ScoreRow({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="flex justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-700 last:border-0">
+      <span className="text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="font-medium text-gray-900 dark:text-gray-100">
+        {value != null ? value.toFixed(2) : '—'}
+      </span>
+    </div>
+  )
+}
+
+function ETFDetailModal({ etf, onClose }: { etf: ETFScoreResponse; onClose: () => void }) {
+  const { t } = useTranslation()
+  const { data: valuation, isLoading: valLoading } = useValuation(etf.ticker)
+
+  return (
+    <Modal
+      open
+      title={etf.ticker}
+      onClose={onClose}
+      footer={
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm rounded-md bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+        >
+          {t('common.close')}
+        </button>
+      }
+    >
+      <div className="space-y-4">
+        {/* Basic info */}
+        <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{t('universe.category')}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{etf.bucket}</p>
+        </div>
+
+        {etf.ter != null && (
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">{t('universe.ter')}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {(etf.ter * 100).toFixed(3)}%
+            </p>
+          </div>
+        )}
+
+        {/* Composite score */}
+        <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t('universe.compositeScore')}</p>
+          {etf.composite_score != null ? (
+            <Badge color={scoreColor(etf.composite_score)} className="text-base px-3 py-1">
+              {etf.composite_score.toFixed(1)} / 10
+            </Badge>
+          ) : (
+            <Badge color="gray">{t('common.na')}</Badge>
+          )}
+        </div>
+
+        {/* Component scores breakdown */}
+        <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t('universe.componentScores')}</p>
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+            <ScoreRow label={t('universe.costScore')} value={etf.component_scores.cost} />
+            <ScoreRow label={t('universe.sharpeScore')} value={etf.component_scores.sharpe_3y} />
+            <ScoreRow label={t('universe.trackingError')} value={etf.component_scores.tracking_error} />
+            <ScoreRow label={t('universe.liquidityAum')} value={etf.component_scores.liquidity_aum} />
+          </div>
+        </div>
+
+        {/* Valuation section */}
+        <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">{t('universe.valuation')}</p>
+          {valLoading ? (
+            <LoadingSpinner size="sm" />
+          ) : valuation ? (
+            <div className="space-y-2">
+              <Badge color={valuationColor(valuation.classification)}>
+                {valuation.classification}
+              </Badge>
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mt-2">
+                <ScoreRow label={t('universe.zScore')} value={valuation.z_score} />
+                <ScoreRow
+                  label={t('universe.percentile52w')}
+                  value={valuation.percentile_52w != null ? valuation.percentile_52w * 100 : null}
+                />
+                <ScoreRow label={t('universe.sma200Dev')} value={valuation.sma200_deviation} />
+              </div>
+              {valuation.stale && (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                  {t('common.dataStale')}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+
+        {etf.stale && (
+          <p className="text-xs text-yellow-600 dark:text-yellow-400">{t('common.dataStale')}</p>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 export default function UniverseBrowser() {
   const { t } = useTranslation()
   const { data, isLoading } = useUniverse()
   const [filter, setFilter] = useState('')
+  const [selectedEtf, setSelectedEtf] = useState<ETFScoreResponse | null>(null)
 
   const allEtfs: ETFScoreResponse[] = data
     ? Object.values(data.buckets).flat()
@@ -39,7 +151,7 @@ export default function UniverseBrowser() {
       <div className="mb-4">
         <input
           className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm bg-white dark:bg-gray-800"
-          placeholder="Filter by ticker or category…"
+          placeholder={t('universe.filterPlaceholder')}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -50,14 +162,18 @@ export default function UniverseBrowser() {
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-900 text-left text-gray-500 text-xs uppercase">
               <th className="px-4 py-3">Ticker</th>
-              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">{t('universe.category')}</th>
               <th className="px-4 py-3">{t('universe.ter')}</th>
               <th className="px-4 py-3">{t('universe.score')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             {items.map((etf) => (
-              <tr key={etf.ticker} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <tr
+                key={etf.ticker}
+                onClick={() => setSelectedEtf(etf)}
+                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+              >
                 <td className="px-4 py-3 font-mono font-semibold">{etf.ticker}</td>
                 <td className="px-4 py-3 text-gray-500">{etf.bucket}</td>
                 <td className="px-4 py-3">
@@ -77,6 +193,10 @@ export default function UniverseBrowser() {
           </tbody>
         </table>
       </div>
+
+      {selectedEtf && (
+        <ETFDetailModal etf={selectedEtf} onClose={() => setSelectedEtf(null)} />
+      )}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { SectorBar } from '@/components/charts/SectorBar'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/common/Button'
+import { ProgressBar } from '@/components/common/ProgressBar'
 import { formatCurrency } from '@/utils/formatting'
 
 function BucketSelector() {
@@ -54,9 +55,16 @@ function SummaryCards({ bucketId }: { bucketId: number }) {
       </div>
       <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('dashboard.goal_progress')}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {data.goal_progress_pct != null ? `${data.goal_progress_pct.toFixed(1)}%` : t('common.na')}
-        </p>
+        {data.goal_progress_pct != null ? (
+          <>
+            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+              {data.goal_progress_pct.toFixed(1)}%
+            </p>
+            <ProgressBar value={data.goal_progress_pct} showLabel={false} />
+          </>
+        ) : (
+          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('common.na')}</p>
+        )}
       </div>
       <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('buckets.target_date')}</p>

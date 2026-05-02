@@ -19,6 +19,7 @@ from app.routes.drawdown import router as drawdown_router
 from app.routes.health import router as health_router
 from app.routes.holdings import router as holdings_router
 from app.routes.sectors import router as sectors_router
+from app.routes.dividends import router as dividends_router
 from app.routes.universe import router as universe_router
 from app.routes.valuation import router as valuation_router
 
@@ -73,3 +74,5 @@ app.include_router(sectors_router, prefix="/api/v1")
 app.include_router(drawdown_router, prefix="/api/v1")
 app.include_router(architect_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
+# Sprint 7
+app.include_router(dividends_router, prefix="/api/v1")
