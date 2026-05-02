@@ -73,7 +73,7 @@ def main() -> None:
         # Ship the Alembic migration scripts and the universe YAML.
         "--add-data", f"{here / 'alembic'}{':' if sys.platform != 'win32' else ';'}alembic",
         "--add-data", f"{here / 'alembic.ini'}{':' if sys.platform != 'win32' else ';'}.",
-        "--add-data", f"{here / 'app' / 'data'}{':' if sys.platform != 'win32' else ';'}app/data",
+        "--add-data", f"{here / 'data'}{':' if sys.platform != 'win32' else ';'}data",
         "--add-data", f"{here / 'templates'}{':' if sys.platform != 'win32' else ';'}templates",
         "--distpath", str(dist),
     ])

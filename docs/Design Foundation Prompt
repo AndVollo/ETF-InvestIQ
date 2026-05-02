@@ -1,0 +1,278 @@
+# Design Foundation Prompt — Smart ETF Portfolio Manager
+
+> **כיצד להשתמש:** העתק את הסעיף "PROMPT" למטה ל-Claude Design (claude.ai עם פרסונה של מעצב, או claude.ai רגיל). זה יחזיר Design Tokens + 6-8 רכיבי בסיס.
+>
+> **שלב הבא אחרי שתקבל את הפלט:** העבר את הקוד המתקבל ל-Claude Code עם ההוראה: *"Apply this design foundation to the project. Use it as the basis for all components in Sprints 5-9."*
+
+---
+
+## הקדמה — למה הפרומפט הזה ולא אחר
+
+המוצר שלך הוא כלי **פיננסי**, לא כלי **ניהול משימות** כמו Linear. יש דמיון אסטרטגי (משעמם זה פיצ'ר, צפיפות מידע, מקצועיות), אבל יש גם הבדלים קריטיים:
+
+| Linear | המוצר שלך | למה זה משנה |
+|--------|-----------|-------------|
+| הרבה אינטראקציה (drag, resize) | מעט מאוד אינטראקציה | פחות חשיבות לאנימציות |
+| Dark mode בלבד | חובה Light + Dark | Light mode יציב לעיניים בטווח ארוך |
+| LTR בלבד | RTL + LTR | חובה logical properties |
+| אנגלית בלבד | עברית + אנגלית | בחירת גופנים שונה |
+| Updates בזמן אמת | סטטי בכוונה | אסור effects של "live data" |
+
+הפרומפט מטה מבקש את ה-**essence** של Linear, לא העתקה.
+
+---
+
+## PROMPT (העתק את זה ל-Claude Design)
+
+```
+You are designing a Design Foundation for "Smart ETF Portfolio Manager" — a long-term investment portfolio management web application.
+
+## CORE CONSTRAINTS
+
+1. **Bilingual support**: Hebrew (RTL) + English (LTR). All tokens must use logical properties (margin-inline-start, not margin-left).
+
+2. **Both themes mandatory**: Light mode + Dark mode, generated from the same token system. Light is the default — this is a tool people use during work hours, not at midnight.
+
+3. **No flashy animations**: This is a financial tool. Subtle micro-interactions only. No glassmorphism, no glow effects, no animated gradients on data displays. (Limited use of subtle gradients on hero/empty states is acceptable.)
+
+4. **Information density over whitespace**: Users need to see drift, exposure, and warnings at a glance. Don't waste vertical space with hero-style padding.
+
+5. **Static data presentation**: No live tickers, no flashing colors on price changes, no "today's gain/loss" emphasis. Color is reserved for STATE (warning level), not for movement.
+
+## DESIGN INSPIRATION
+
+**Primary reference**: Linear (linear.app) — its post-2024 redesign specifically.
+
+What to extract from Linear:
+- Restraint with color (mostly monochrome, color used surgically for meaning)
+- LCH-based color system for perceptually uniform palettes
+- Tight 8px spacing scale with 4px half-step for icons
+- Inter Variable font with tight tracking on headings
+- Subtle borders over heavy shadows
+- Calm, "boring is a feature" aesthetic
+- Sidebar navigation with collapsed state
+- High information density without feeling cramped
+
+What to AVOID from Linear:
+- Heavy keyboard-shortcut UI (we have casual users, not power users)
+- Drag-and-drop affordances (no kanban here)
+- Real-time presence indicators
+- Activity feeds with constant motion
+
+**Secondary reference for financial restraint**: Stripe Dashboard, Mercury Bank app — for how to present numbers without making them feel volatile.
+
+## DELIVERABLES NEEDED
+
+### 1. Design Tokens (CSS Custom Properties)
+
+Provide a complete `tokens.css` file with:
+
+**Colors** (use OKLCH where possible, with HEX fallbacks):
+- `--color-bg-primary`, `--color-bg-secondary`, `--color-bg-elevated`
+- `--color-surface-1` through `--color-surface-3` (elevation system)
+- `--color-border-subtle`, `--color-border-default`, `--color-border-strong`
+- `--color-text-primary`, `--color-text-secondary`, `--color-text-tertiary`, `--color-text-disabled`
+- `--color-accent-primary`, `--color-accent-hover`, `--color-accent-pressed`
+- Semantic states (used SPARINGLY):
+  - `--color-success` (green, only for "in-target" badges and confirmations)
+  - `--color-warning` (amber, for soft-warnings)
+  - `--color-danger` (red, for hard-warnings and over-cap exposures)
+  - `--color-info` (blue, for tooltips and informational states)
+- Each must have light + dark variants via `[data-theme="dark"]`
+
+CRITICAL: The accent color should NOT be electric blue. Pick something more muted — desaturated indigo, slate-blue, or even a warm gray as primary. Save vivid color for warnings/alerts only. Linear post-2024 uses very little color; emulate that restraint.
+
+**Typography**:
+- Hebrew: `--font-family-he: 'Heebo', 'Rubik', system-ui` (or recommend a better Hebrew Variable font you know works well)
+- English: `--font-family-en: 'Inter Variable', 'Inter', system-ui`
+- Mono: `--font-family-mono: 'JetBrains Mono Variable', 'SF Mono', monospace`
+- Type scale (desktop): 11, 12, 13, 14, 16, 18, 20, 24, 32 px
+- Line heights: tight (1.2) for headings, comfortable (1.5) for body, loose (1.7) for long text
+- Font weights: 400 (regular), 500 (medium), 600 (semibold), 700 (bold for headings only)
+- Tracking: tight (-0.02em) for headings, normal for body, wide (+0.02em) for UI labels in caps
+
+**Spacing** (8px base, 4px half-step):
+- `--space-0` through `--space-16` mapped to: 0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96, 128, 160, 192
+
+**Radii**:
+- `--radius-xs` (4px), `--radius-sm` (6px), `--radius-md` (8px), `--radius-lg` (12px), `--radius-xl` (16px), `--radius-full` (9999px)
+
+**Shadows** (subtle — Linear uses borders more than shadows):
+- `--shadow-xs`, `--shadow-sm`, `--shadow-md`, `--shadow-lg`
+- All shadows MUST work in both light and dark themes (different token values)
+
+**Motion**:
+- `--duration-fast` (120ms), `--duration-normal` (200ms), `--duration-slow` (320ms)
+- `--ease-out`, `--ease-in-out`
+- Reserved for state transitions only — no decorative animations
+
+### 2. Component Primitives (React + TypeScript + Tailwind)
+
+Build these 8 components using the tokens above. Use Tailwind utility classes that reference CSS variables (e.g. `bg-[var(--color-bg-primary)]`):
+
+**Component 1: Button**
+- Variants: `primary`, `secondary`, `ghost`, `danger`
+- Sizes: `sm`, `md`, `lg`
+- States: default, hover, pressed, disabled, loading
+- Optional: leading icon, trailing icon
+- Must work in both LTR and RTL
+
+**Component 2: Input**
+- Variants: text, number, currency
+- States: default, focus, error, disabled
+- Currency variant has currency code badge inside the input on the inline-end side
+- Number variant supports formatted display (1,234.56) but raw value internally
+- Error state shows message_key-translated text below
+
+**Component 3: Card**
+- Variants: `default`, `elevated`, `outlined`
+- Optional header (with title + actions slot)
+- Optional footer
+- Padding scale: compact, comfortable, spacious
+
+**Component 4: Badge**
+- Variants: `neutral`, `success`, `warning`, `danger`, `info`
+- Sizes: `sm`, `md`
+- Optional dot indicator
+- Used for: valuation status (Cheap/Fair/Expensive), sector warnings, bucket horizon
+
+**Component 5: Modal/Dialog**
+- Sizes: `sm`, `md`, `lg`, `fullscreen`
+- Header with title + close button
+- Body (scrollable)
+- Footer (action buttons aligned per direction — primary on inline-end)
+- Backdrop with subtle blur
+- Focus trap + ESC to close
+
+**Component 6: Tooltip**
+- Triggers: hover, focus, click
+- Placements: top, bottom, start, end (NOT left/right)
+- Subtle arrow
+- Max-width to prevent overflow
+
+**Component 7: Select/Dropdown**
+- Trigger: looks like Input
+- Options list with hover/selected states
+- Searchable variant
+- Multi-select variant (with checkboxes)
+
+**Component 8: ProgressBar**
+- Variants: `linear`, `goal-tracker` (shows label + percentage + raw value)
+- Color reflects state: neutral by default, success when ≥100%
+- For goal-tracker: shows "current / target" with currency formatting
+
+### 3. Reference Page: Dashboard Layout
+
+Build ONE complete reference page (the Dashboard) that demonstrates:
+
+- Sidebar navigation (8 items + collapse button + language switch + theme switch)
+- Top bar with active Bucket selector
+- 3 summary cards in a row (portfolio value, total return, goal progress)
+- Drift Chart (horizontal bars showing how each holding deviates from target %)
+- Status strip with valuation badges per holding
+- Sector exposure summary (mini bar chart, links to full page)
+- "Next deposit" reminder card
+- Empty state for when user has no buckets yet
+
+This page is the LITMUS TEST. If it feels right, the rest of the system will work. If it feels generic, the foundation needs more iteration.
+
+### 4. Bilingual Demonstration
+
+For at least 2 components (Button + Card), provide both LTR (English) and RTL (Hebrew) examples to verify the design works in both directions.
+
+## OUTPUT FORMAT
+
+Return three separate code blocks:
+
+1. `tokens.css` — complete token file with both light/dark themes
+2. `components.tsx` — all 8 components in a single file (you can split later)
+3. `dashboard.tsx` — the reference dashboard page
+
+After the code, add a brief "Design Decisions" section explaining:
+- Why you chose specific colors (especially the accent)
+- Trade-offs you made vs. pure Linear style
+- What deserves further iteration in the full design pass after Sprint 9
+
+## ANTI-PATTERNS — explicitly avoid
+
+❌ Glassmorphism (overused, harms readability of numbers)
+❌ Animated gradients (distracting in financial context)
+❌ Bright neon accents (TQQQ vibes — wrong product)
+❌ Heavy drop shadows (Linear uses borders for hierarchy)
+❌ Stock-ticker style red/green flashing (we are AGAINST this)
+❌ Skeuomorphic chart elements (3D bars, gloss effects)
+❌ Default browser fonts (Times, Arial — must specify explicitly)
+❌ Tailwind default color palette as-is (#3b82f6 blue is overused)
+
+## TONE OF THE FINAL DESIGN
+
+The user should feel like they're using **a serious tool**, not a fintech app trying to gamify investing. Think: medical device dashboard meets newspaper layout. Calm, dense, trustworthy.
+
+If a user opens the app and feels "wow, exciting!" — we failed.
+If they feel "ok, let's see what needs my attention" — we won.
+```
+
+---
+
+## אחרי שתקבל את הפלט
+
+### 1. בדוק את ה-tokens
+פתח את `tokens.css` ובדוק:
+- האם יש light + dark שניהם?
+- האם הצבעים הם OKLCH ולא רק HEX?
+- האם הגופנים העבריים מוגדרים?
+
+### 2. בדוק את ה-Dashboard
+זה ה-litmus test. שאל את עצמך:
+- האם זה נראה רציני? (טוב)
+- האם זה נראה כמו Robinhood? (רע — תחזור עם feedback)
+- האם זה עובד גם ב-RTL? (חובה לאמת)
+
+### 3. אם משהו לא עובד — Feedback Prompt
+
+אם תרצה לבקש שינויים, השתמש בתבנית:
+
+```
+The foundation is mostly good, but I need adjustments:
+
+1. [Specific issue, e.g., "The accent color feels too cold — try something with more warmth"]
+2. [Another issue, e.g., "The Drift Chart bars are too thick — reduce to 6px height"]
+3. [...]
+
+Keep everything else as-is. Output only the changed files.
+```
+
+### 4. כשאתה מרוצה — שלח ל-Claude Code
+
+```
+Apply this design foundation to the project:
+
+1. Save tokens.css to frontend/src/styles/tokens.css
+2. Save components.tsx into frontend/src/components/common/ (split into individual files: Button.tsx, Input.tsx, etc.)
+3. Save dashboard.tsx as frontend/src/pages/Dashboard.tsx (this is the reference — actual data integration comes in Sprint 9)
+4. Update tailwind.config.js to reference the CSS variables
+5. Update CLAUDE.md to document the design system location
+
+Do NOT redesign existing pages yet — only commit the foundation.
+The full design pass on all pages happens after Sprint 9.
+```
+
+---
+
+## למה לא צילומי מסך של Linear
+
+לא הוספתי לך צילומי מסך של Linear מהסיבות שהסברתי קודם (זכויות יוצרים), **אבל** — Claude Design יודע מצוין מה זה Linear. זה אחד הרפרנסים הכי מצוטטים בעולם ה-design system. הזכרתי אותו פעמיים בפרומפט עם השנה הספציפית (post-2024 redesign), וזה מספיק כדי שהוא ידע על מה אנחנו מדברים.
+
+אם אחרי שתקבל את הפלט תרגיש שזה לא דומה מספיק ל-Linear — תוכל לפתוח את `linear.app` בדפדפן, לעשות צילום מסך של מסך ספציפי, ולשלוח אותו עם הודעה כמו: *"This is more what I'm looking for — see how the sidebar uses faint borders instead of shadows. Adjust accordingly."*
+
+זה הזרימה הנכונה: התחל עם הפרומפט, ראה תוצאה, **אז** הוסף רפרנסים ויזואליים אם צריך.
+
+---
+
+## הערה כנה אחרונה
+
+הפרומפט הזה נראה ארוך, אבל הוא **חיוני** לקבל תוצאה טובה בניסיון הראשון. פרומפט קצר ("עצב לי משהו כמו Linear") יחזיר לך גרסה גנרית של dark mode עם מלא glassmorphism — בדיוק ההפך ממה שאתה צריך.
+
+הפרומפט הזה מכוון את Claude Design לאיפה שהמוצר שלך באמת רוצה להיות: כלי פיננסי רציני, לא עוד SaaS עוקב Linear באופן עיוור.
+
+הצלחה. אחרי שתקבל את הפלט — שלח לי בחזרה אם תרצה דעה שנייה.

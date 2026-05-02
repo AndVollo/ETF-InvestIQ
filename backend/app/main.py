@@ -35,8 +35,12 @@ def _run_migrations() -> None:
     from alembic import command
     from alembic.config import Config
 
-    cfg_path = Path(__file__).resolve().parent.parent / "alembic.ini"
+    # In PyInstaller frozen mode, bundled data lives under sys._MEIPASS.
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    cfg_path = base / "alembic.ini"
     cfg = Config(str(cfg_path))
+    # Override the relative script_location with the absolute bundled path.
+    cfg.set_main_option("script_location", str(base / "alembic"))
     cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
     command.upgrade(cfg, "head")
 

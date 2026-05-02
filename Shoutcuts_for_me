@@ -1,0 +1,5 @@
+cd "/Users/andreyvolovich/ETF InvestIQ/frontend"
+source "$HOME/.cargo/env"
+npm run tauri:dev
+
+

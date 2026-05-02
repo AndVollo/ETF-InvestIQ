@@ -16,6 +16,7 @@ dependencies = [
     "python-dateutil>=2.9.0",
     "pyyaml>=6.0.2",
     "tenacity>=9.0.0",
+    "aiosqlite>=0.20.0",
 ]
 
 [project.optional-dependencies]
@@ -61,3 +62,8 @@ addopts = "--cov=app --cov-report=term-missing -v"
 [tool.coverage.run]
 source = ["app"]
 omit = ["tests/*", "alembic/*"]
+
+[dependency-groups]
+dev = [
+    "greenlet>=3.4.0",
+]
