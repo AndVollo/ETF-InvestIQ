@@ -7,7 +7,7 @@
 - `uv` (Python package manager): `pip install uv`
 - Git
 
-## Quick Start (local, no Docker)
+## Quick Start
 
 ### 1. Clone and enter the repo
 
@@ -50,16 +50,6 @@ npm run dev
 ```
 
 App is now live at http://localhost:5173
-
-## Docker Compose (alternative)
-
-```bash
-# From repo root
-docker compose up --build
-```
-
-- Frontend: http://localhost:5173
-- Backend: http://localhost:8000
 
 ## Environment variables
 
