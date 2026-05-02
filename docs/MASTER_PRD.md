@@ -37,6 +37,9 @@
 - **הפרדת יעדים** — Bucket Architecture לפי אופק זמן (קצר/בינוני/ארוך)
 - **AI כעוזר ולא כמנהל** — ה-AI מסביר, לא מגלה. המתמטיקה מקבלת החלטות.
 
+**Distribution**: אפליקציית desktop נטיבית (Tauri 2.0) ל-macOS ו-Windows.
+משתמש יחיד, local-first. כל הנתונים נשארים על המכונה של המשתמש.
+
 ### 1.2 עקרונות יסוד (לא לסטות מהם)
 
 | עיקרון | משמעות מעשית |
@@ -116,6 +119,8 @@
 - ❌ Chart.js — Recharts פשוט יותר ל-React
 - ❌ ספריות AI/ML מקומיות (TensorFlow, scikit) — אין צורך אמיתי
 - ❌ Celery / Redis — אין משימות רקע אמיתיות בפרויקט הזה
+- ❌ Electron — להשתמש ב-Tauri במקום (קל יותר, בטוח יותר, קטן יותר)
+- ❌ Cloud deployment — זה local-first app, אין שרתים
 
 ---
 
@@ -200,6 +205,7 @@ smart-etf-manager/
 │   ├── templates/
 │   │   └── obsidian/
 │   │       ├── decision_entry.md
+│   │       ├── architect_decision.md
 │   │       └── universe_review.md
 │   │
 │   ├── tests/
@@ -208,6 +214,7 @@ smart-etf-manager/
 │   │   ├── integration/
 │   │   └── fixtures/
 │   │
+│   ├── build_sidecar.py            # PyInstaller build → Tauri sidecar
 │   └── README.md
 │
 ├── frontend/
@@ -215,6 +222,15 @@ smart-etf-manager/
 │   ├── tsconfig.json
 │   ├── vite.config.ts
 │   ├── tailwind.config.js
+│   │
+│   ├── src-tauri/                  ← Tauri shell (Rust)
+│   │   ├── Cargo.toml
+│   │   ├── tauri.conf.json
+│   │   ├── build.rs
+│   │   ├── src/main.rs
+│   │   ├── icons/
+│   │   ├── capabilities/
+│   │   └── binaries/               ← PyInstaller-built Python sidecar
 │   │
 │   ├── src/
 │   │   ├── main.tsx
@@ -1771,6 +1787,41 @@ tests/
 - [ ] עדכון README אם הוספו תלויות
 - [ ] עדכון `docs/ARCHITECTURE.md` אם השתנה מבנה
 - [ ] git tag: `sprint-N-complete`
+
+---
+
+## 16. Distribution & Installation
+
+### Build artifacts
+- macOS Apple Silicon: `.dmg` (aarch64-apple-darwin)
+- macOS Intel: `.dmg` (x86_64-apple-darwin)
+- Windows: `.msi` (preferred) ו-`.exe` (NSIS installer)
+
+### Build commands
+- Development: `cd frontend && npm run tauri:dev`
+- Production: `cd frontend && npm run tauri:build`
+
+ה-builds יושבים תחת `frontend/src-tauri/target/release/bundle/`.
+
+### Code signing (נדחה לפרסום)
+- macOS: Apple Developer certificate נדרש ל-notarization
+- Windows: Code signing certificate למניעת SmartScreen warnings
+- כרגע **לא חתום** — מתאים לשימוש אישי בלבד.
+
+### Installation paths
+- macOS: `/Applications/Smart ETF Manager.app`
+- Windows: `C:\Program Files\Smart ETF Manager\`
+
+### User data location
+- macOS: `~/Library/Application Support/SmartETFManager/`
+- Windows: `%APPDATA%\SmartETFManager\`
+- Linux: `~/.local/share/SmartETFManager/` (נתמך אבל לא נבנה רשמית)
+
+ה-DB (`portfolio.db`) יושב כאן — **לעולם לא בתוך bundle ה-app**.
+
+### Update strategy
+- עדכונים ידניים בשלב הראשון (הורדת `.dmg`/`.msi` חדש)
+- Tauri updater plugin אפשרי — נדחה ל-v1.0
 
 ---
 
