@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "Smart ETF Manager",
+  "version": "0.8.0",
+  "identifier": "com.smartetf.manager",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Smart ETF Manager",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg", "msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Finance",
+    "shortDescription": "Long-term ETF portfolio management",
+    "longDescription": "A goal-anchored, tax-efficient ETF portfolio manager with sector analysis and drawdown simulation.",
+    "externalBin": [
+      "binaries/smart-etf-backend"
+    ]
+  }
+}

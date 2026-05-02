@@ -10,7 +10,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.56.2",
@@ -37,6 +40,7 @@
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
     "vite": "^5.4.8",
-    "vitest": "^2.1.1"
+    "vitest": "^2.1.1",
+    "@tauri-apps/cli": "^2.0.0"
   }
 }

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import sys
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,13 +28,29 @@ from app.routes.valuation import router as valuation_router
 logger = get_logger(__name__)
 
 
+def _run_migrations() -> None:
+    """Run Alembic upgrade head — used in frozen (Tauri sidecar) mode where
+    the user can't invoke `alembic upgrade head` themselves. In dev we keep
+    using the create_all fallback so the test conftest stays cheap."""
+    from alembic import command
+    from alembic.config import Config
+
+    cfg_path = Path(__file__).resolve().parent.parent / "alembic.ini"
+    cfg = Config(str(cfg_path))
+    cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
+    command.upgrade(cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging(debug=settings.debug)
-    logger.info("startup", version=settings.app_version)
+    logger.info("startup", version=settings.app_version, db_path=str(settings.db_path))
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if getattr(sys, "frozen", False):
+        _run_migrations()
+    else:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
     yield
 
@@ -76,3 +94,14 @@ app.include_router(architect_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 # Sprint 7
 app.include_router(dividends_router, prefix="/api/v1")
+
+
+if __name__ == "__main__":
+    # Entrypoint for the PyInstaller-bundled Tauri sidecar.
+    # The Tauri shell spawns this binary on app launch.
+    import os
+
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")

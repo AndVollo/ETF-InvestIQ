@@ -1,0 +1,7 @@
+# Rust build artifacts
+/target/
+/gen/
+
+# PyInstaller-built sidecars (rebuild per platform via backend/build_sidecar.py)
+/binaries/*
+!/binaries/.gitkeep
