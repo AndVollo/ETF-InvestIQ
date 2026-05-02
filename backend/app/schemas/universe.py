@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+Domicile = Literal["US", "IE", "LU"]
+Distribution = Literal["Distributing", "Accumulating"]
 
 
 class ETFMetaResponse(BaseModel):
     ticker: str
     name: str
     bucket: str
+    isin: str | None = None
+    domicile: Domicile = "US"
+    distribution: Distribution = "Distributing"
+    ucits: bool = False
     ter: float
     aum_b: float | None = None
     inception: str | None = None

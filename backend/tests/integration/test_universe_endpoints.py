@@ -5,12 +5,13 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_list_universe_returns_50_etfs(client: AsyncClient):
+async def test_list_universe_returns_curated_set(client: AsyncClient):
     resp = await client.get("/api/v1/universe/")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total_etfs"] == 50
-    assert len(data["etfs"]) == 50
+    # 50 US-domiciled + 12 UCITS = 62 (kept loose so adding a UCITS doesn't break)
+    assert data["total_etfs"] >= 50
+    assert len(data["etfs"]) == data["total_etfs"]
     assert data["version"] == "2026-Q2"
 
 

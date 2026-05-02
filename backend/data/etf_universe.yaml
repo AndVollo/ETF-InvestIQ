@@ -1,503 +1,825 @@
----
-# Smart ETF Portfolio Manager — Curated Universe
-# Version: 2026-Q2
-# Last review: 2026-04-26
-# Source of Truth: edit this file → PR → git tag
-# Audit script: scripts/audit_universe.py
-
-version: "2026-Q2"
-reviewed_at: "2026-04-26"
-total_etfs: 50  # 6+6+6+10+5+5+5+7 = 50
-
-# ─────────────────────────────────────────────
-# UNIVERSE BUCKETS
-# ─────────────────────────────────────────────
+version: 2026-Q2
+reviewed_at: '2026-04-26'
+total_etfs: 62
 buckets:
-
   GLOBAL_CORE:
-    description_en: "Broad global equity exposure — core of any long-term portfolio"
-    description_he: "חשיפה גלובלית רחבה — ליבת כל תיק לטווח ארוך"
+    description_en: Broad global equity exposure — core of any long-term portfolio
+    description_he: חשיפה גלובלית רחבה — ליבת כל תיק לטווח ארוך
     max_pct: null
-    allowed_horizon: [MEDIUM, LONG]
+    allowed_horizon:
+      - MEDIUM
+      - LONG
     etfs:
       - ticker: VT
-        name: "Vanguard Total World Stock ETF"
+        name: Vanguard Total World Stock ETF
+        isin: US9220427424
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.07
         aum_b: 45.0
-        inception: "2008-06-24"
-        description_en: "Single-fund global equity — all-cap, 9,000+ stocks"
-        description_he: "חשיפה גלובלית בקרן אחת, מניות כלל-שוק"
-
+        inception: '2008-06-24'
+        description_en: Single-fund global equity — all-cap, 9,000+ stocks
+        description_he: חשיפה גלובלית בקרן אחת, מניות כלל-שוק
       - ticker: VTI
-        name: "Vanguard Total Stock Market ETF"
+        name: Vanguard Total Stock Market ETF
+        isin: US9229087690
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 430.0
-        inception: "2001-05-24"
-        description_en: "Total US equity market — 4,000+ stocks, all-cap"
-        description_he: "שוק המניות האמריקאי בשלמותו"
-
+        inception: '2001-05-24'
+        description_en: Total US equity market — 4,000+ stocks, all-cap
+        description_he: שוק המניות האמריקאי בשלמותו
       - ticker: VXUS
-        name: "Vanguard Total International Stock ETF"
+        name: Vanguard Total International Stock ETF
+        isin: US9219097683
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.05
         aum_b: 75.0
-        inception: "2011-01-26"
-        description_en: "International equities ex-US — developed + emerging"
-        description_he: "מניות בינלאומיות מחוץ לארה\"ב"
-
+        inception: '2011-01-26'
+        description_en: International equities ex-US — developed + emerging
+        description_he: מניות בינלאומיות מחוץ לארה"ב
       - ticker: SCHB
-        name: "Schwab U.S. Broad Market ETF"
+        name: Schwab U.S. Broad Market ETF
+        isin: US8085246538
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 30.0
-        inception: "2009-11-03"
-        description_en: "Broad US equity, low-cost alternative to VTI"
-        description_he: "שוק המניות האמריקאי, חלופה ל-VTI"
-
+        inception: '2009-11-03'
+        description_en: Broad US equity, low-cost alternative to VTI
+        description_he: שוק המניות האמריקאי, חלופה ל-VTI
       - ticker: SPDW
-        name: "SPDR Portfolio Developed World ex-US ETF"
+        name: SPDR Portfolio Developed World ex-US ETF
+        isin: US78463X8859
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 18.0
-        inception: "2007-04-20"
-        description_en: "Developed markets ex-US only (no EM)"
-        description_he: "שווקים מפותחים בלבד, ללא EM וללא ארה\"ב"
-
+        inception: '2007-04-20'
+        description_en: Developed markets ex-US only (no EM)
+        description_he: שווקים מפותחים בלבד, ללא EM וללא ארה"ב
       - ticker: IXUS
-        name: "iShares Core MSCI Total International Stock ETF"
+        name: iShares Core MSCI Total International Stock ETF
+        isin: US46434G8341
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.07
         aum_b: 35.0
-        inception: "2012-10-18"
-        description_en: "International equities ex-US, MSCI methodology"
-        description_he: "מניות בינלאומיות ex-US, מתודולוגיית MSCI"
-
+        inception: '2012-10-18'
+        description_en: International equities ex-US, MSCI methodology
+        description_he: מניות בינלאומיות ex-US, מתודולוגיית MSCI
       - ticker: ACWI
-        name: "iShares MSCI ACWI ETF"
+        name: iShares MSCI ACWI ETF
+        isin: US4642863926
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.32
         aum_b: 22.0
-        inception: "2008-03-26"
-        description_en: "Global all-cap including EM — single-fund MSCI ACWI index"
-        description_he: "כל-עולמי כולל EM בקרן אחת, מדד MSCI ACWI"
-
+        inception: '2008-03-26'
+        description_en: Global all-cap including EM — single-fund MSCI ACWI index
+        description_he: כל-עולמי כולל EM בקרן אחת, מדד MSCI ACWI
+      - ticker: VWRA
+        name: Vanguard FTSE All-World UCITS ETF (Acc)
+        isin: IE00BK5BQT80
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.22
+        aum_b: 13.0
+        inception: '2019-07-23'
+        description_en: Global all-world equity, UCITS Accumulating — Israeli tax-efficient alternative to VT
+        description_he: חשיפה גלובלית כל-עולמית, UCITS Accumulating — מקבילה ל-VT עם יעילות מס
+      - ticker: CSPX
+        name: iShares Core S&P 500 UCITS ETF (Acc)
+        isin: IE00B5BMR087
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.07
+        aum_b: 90.0
+        inception: '2010-05-19'
+        description_en: S&P 500 in UCITS Accumulating wrapper — alternative to VOO/SPY/VTI
+        description_he: מדד S&P 500 ב-UCITS Accumulating — מקבילה ל-VOO/SPY
+      - ticker: VHVE
+        name: Vanguard FTSE Developed World UCITS ETF (Acc)
+        isin: IE00BKX55T58
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.12
+        aum_b: 5.5
+        inception: '2019-09-23'
+        description_en: Developed-markets equity (incl. US) — UCITS Accumulating alternative to VTI/VEA blend
+        description_he: מניות שווקים מפותחים (כולל ארה"ב) — UCITS Accumulating
   US_FACTOR_VALUE:
-    description_en: "US Small-Cap Value — Fama-French factor exposure"
-    description_he: "Small Cap Value אמריקאי — חשיפה לפקטור Fama-French"
+    description_en: US Small-Cap Value — Fama-French factor exposure
+    description_he: Small Cap Value אמריקאי — חשיפה לפקטור Fama-French
     max_pct: null
-    allowed_horizon: [LONG]
+    allowed_horizon:
+      - LONG
     etfs:
       - ticker: AVUV
-        name: "Avantis U.S. Small Cap Value ETF"
+        name: Avantis U.S. Small Cap Value ETF
+        isin: US0250728107
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.25
         aum_b: 14.0
-        inception: "2019-09-24"
-        description_en: "Systematic SCV with profitability screen — best-in-class"
-        description_he: "Small Cap Value שיטתי עם מסנן רווחיות"
-        proxy_before: "2019-09-24"
+        inception: '2019-09-24'
+        description_en: Systematic SCV with profitability screen — best-in-class
+        description_he: Small Cap Value שיטתי עם מסנן רווחיות
+        proxy_before: '2019-09-24'
         proxy_ticker: IJS
-
       - ticker: DFSV
-        name: "Dimensional U.S. Small Cap Value ETF"
-        ter: 0.30
+        name: Dimensional U.S. Small Cap Value ETF
+        isin: US23332Q3097
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.3
         aum_b: 4.0
-        inception: "2022-02-15"
-        description_en: "Dimensional's ETF version of DFSVX — deep value tilt"
-        description_he: "גרסת ה-ETF של Dimensional לקרן DFSVX"
-        proxy_before: "2022-02-15"
+        inception: '2022-02-15'
+        description_en: Dimensional's ETF version of DFSVX — deep value tilt
+        description_he: גרסת ה-ETF של Dimensional לקרן DFSVX
+        proxy_before: '2022-02-15'
         proxy_ticker: IJS
-
       - ticker: VBR
-        name: "Vanguard Small-Cap Value ETF"
+        name: Vanguard Small-Cap Value ETF
+        isin: US9229087179
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.07
         aum_b: 28.0
-        inception: "2004-01-26"
-        description_en: "Broad US SCV, CRSP index — low cost"
-        description_he: "Small Cap Value רחב, מדד CRSP, עלות נמוכה"
-
+        inception: '2004-01-26'
+        description_en: Broad US SCV, CRSP index — low cost
+        description_he: Small Cap Value רחב, מדד CRSP, עלות נמוכה
       - ticker: IJS
-        name: "iShares S&P Small-Cap 600 Value ETF"
+        name: iShares S&P Small-Cap 600 Value ETF
+        isin: US4642878007
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.18
         aum_b: 8.0
-        inception: "2000-07-24"
-        description_en: "S&P 600 Value — long history, used as SCV proxy pre-2019"
-        description_he: "S&P 600 Value — היסטוריה ארוכה, משמש כ-proxy ל-AVUV"
-
+        inception: '2000-07-24'
+        description_en: S&P 600 Value — long history, used as SCV proxy pre-2019
+        description_he: S&P 600 Value — היסטוריה ארוכה, משמש כ-proxy ל-AVUV
       - ticker: VIOV
-        name: "Vanguard S&P Small-Cap 600 Value ETF"
+        name: Vanguard S&P Small-Cap 600 Value ETF
+        isin: US9229085769
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.15
         aum_b: 1.0
-        inception: "2010-09-07"
-        description_en: "Vanguard's S&P 600 Value — ultra-low cost"
-        description_he: "S&P 600 Value של Vanguard, עלות נמוכה מאוד"
-
+        inception: '2010-09-07'
+        description_en: Vanguard's S&P 600 Value — ultra-low cost
+        description_he: S&P 600 Value של Vanguard, עלות נמוכה מאוד
       - ticker: SLYV
-        name: "SPDR S&P 600 Small Cap Value ETF"
+        name: SPDR S&P 600 Small Cap Value ETF
+        isin: US78464A4153
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.15
         aum_b: 2.5
-        inception: "2000-11-08"
-        description_en: "S&P 600 Small Cap Value — long history, SPDR version"
-        description_he: "S&P 600 Small Cap Value, היסטוריה ארוכה, גרסת SPDR"
-
+        inception: '2000-11-08'
+        description_en: S&P 600 Small Cap Value — long history, SPDR version
+        description_he: S&P 600 Small Cap Value, היסטוריה ארוכה, גרסת SPDR
+      - ticker: ZPRV
+        name: SPDR MSCI USA Small Cap Value Weighted UCITS ETF
+        isin: IE00BSPLC413
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.3
+        aum_b: 0.7
+        inception: '2015-04-15'
+        description_en: US Small-Cap Value, value-weighted methodology — closest UCITS proxy for AVUV
+        description_he: Small Cap Value אמריקאי במשקל ערך — מקבילה UCITS ל-AVUV
+      - ticker: WSML
+        name: iShares MSCI World Small Cap UCITS ETF
+        isin: IE00BF4RFH31
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.35
+        aum_b: 4.5
+        inception: '2018-04-13'
+        description_en: Developed-markets small-cap, UCITS Accumulating
+        description_he: Small Cap בשווקים מפותחים, UCITS Accumulating
   INTL_FACTOR_VALUE:
-    description_en: "International & Emerging Markets Small-Cap Value"
-    description_he: "Small Cap Value בינלאומי ושווקים מתעוררים"
+    description_en: International & Emerging Markets Small-Cap Value
+    description_he: Small Cap Value בינלאומי ושווקים מתעוררים
     max_pct: null
-    allowed_horizon: [LONG]
+    allowed_horizon:
+      - LONG
     etfs:
       - ticker: AVDV
-        name: "Avantis International Small Cap Value ETF"
+        name: Avantis International Small Cap Value ETF
+        isin: US0250728206
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.36
         aum_b: 7.0
-        inception: "2019-09-24"
-        description_en: "Developed markets ex-US SCV with profitability screen"
-        description_he: "Small Cap Value בשווקים מפותחים מחוץ לארה\"ב"
-        proxy_before: "2019-09-24"
+        inception: '2019-09-24'
+        description_en: Developed markets ex-US SCV with profitability screen
+        description_he: Small Cap Value בשווקים מפותחים מחוץ לארה"ב
+        proxy_before: '2019-09-24'
         proxy_ticker: EFV
-
       - ticker: AVES
-        name: "Avantis Emerging Markets Value ETF"
+        name: Avantis Emerging Markets Value ETF
+        isin: US0250728362
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.36
         aum_b: 2.5
-        inception: "2021-09-28"
-        description_en: "EM value with profitability screen — Avantis methodology"
-        description_he: "Value בשווקים מתעוררים עם מסנן רווחיות"
-        proxy_before: "2021-09-28"
+        inception: '2021-09-28'
+        description_en: EM value with profitability screen — Avantis methodology
+        description_he: Value בשווקים מתעוררים עם מסנן רווחיות
+        proxy_before: '2021-09-28'
         proxy_ticker: DEM
-
       - ticker: AVEM
-        name: "Avantis Emerging Markets Equity ETF"
+        name: Avantis Emerging Markets Equity ETF
+        isin: US0250728289
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.33
         aum_b: 4.0
-        inception: "2019-09-24"
-        description_en: "EM broad equity with factor tilts — profitability + value"
-        description_he: "מניות EM רחבות עם הטיות לפקטורים"
-        proxy_before: "2019-09-24"
+        inception: '2019-09-24'
+        description_en: EM broad equity with factor tilts — profitability + value
+        description_he: מניות EM רחבות עם הטיות לפקטורים
+        proxy_before: '2019-09-24'
         proxy_ticker: VWO
-
       - ticker: DLS
-        name: "WisdomTree International SmallCap Dividend Fund"
+        name: WisdomTree International SmallCap Dividend Fund
+        isin: US97717W6062
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.58
         aum_b: 1.8
-        inception: "2006-06-16"
-        description_en: "International small-cap with dividend weighting — long history"
-        description_he: "Small Cap בינלאומי עם משקל דיבידנד, היסטוריה ארוכה"
-
+        inception: '2006-06-16'
+        description_en: International small-cap with dividend weighting — long history
+        description_he: Small Cap בינלאומי עם משקל דיבידנד, היסטוריה ארוכה
       - ticker: EFV
-        name: "iShares MSCI EAFE Value ETF"
+        name: iShares MSCI EAFE Value ETF
+        isin: US4642865209
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.35
         aum_b: 15.0
-        inception: "2005-08-01"
-        description_en: "Developed markets ex-US value — MSCI methodology, long history"
-        description_he: "Value בשווקים מפותחים ex-US, היסטוריה ארוכה"
-
+        inception: '2005-08-01'
+        description_en: Developed markets ex-US value — MSCI methodology, long history
+        description_he: Value בשווקים מפותחים ex-US, היסטוריה ארוכה
       - ticker: ISCF
-        name: "iShares Edge MSCI Multifactor Intl Small-Cap ETF"
-        ter: 0.40
+        name: iShares Edge MSCI Multifactor Intl Small-Cap ETF
+        isin: US46435U7787
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.4
         aum_b: 0.6
-        inception: "2015-04-28"
-        description_en: "International small-cap with multi-factor tilt"
-        description_he: "Small Cap בינלאומי עם מולטי-פקטור"
-
+        inception: '2015-04-28'
+        description_en: International small-cap with multi-factor tilt
+        description_he: Small Cap בינלאומי עם מולטי-פקטור
   US_BONDS:
-    description_en: "US fixed income — core bond exposure"
-    description_he: "אג\"ח אמריקאי — חשיפת ליבה לאג\"ח"
+    description_en: US fixed income — core bond exposure
+    description_he: אג"ח אמריקאי — חשיפת ליבה לאג"ח
     max_pct: null
-    allowed_horizon: [MEDIUM, LONG]
+    allowed_horizon:
+      - MEDIUM
+      - LONG
     etfs:
       - ticker: BND
-        name: "Vanguard Total Bond Market ETF"
+        name: Vanguard Total Bond Market ETF
+        isin: US9219378356
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 120.0
-        inception: "2007-04-03"
-        description_en: "Total US bond market — investment grade, all maturities"
-        description_he: "שוק האג\"ח האמריקאי בשלמותו, כל הבשלויות"
-
+        inception: '2007-04-03'
+        description_en: Total US bond market — investment grade, all maturities
+        description_he: שוק האג"ח האמריקאי בשלמותו, כל הבשלויות
       - ticker: AGG
-        name: "iShares Core U.S. Aggregate Bond ETF"
+        name: iShares Core U.S. Aggregate Bond ETF
+        isin: US4642872265
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 110.0
-        inception: "2003-09-22"
-        description_en: "US aggregate bond market — near-identical to BND"
-        description_he: "שוק האג\"ח האמריקאי, כמעט זהה ל-BND"
-
+        inception: '2003-09-22'
+        description_en: US aggregate bond market — near-identical to BND
+        description_he: שוק האג"ח האמריקאי, כמעט זהה ל-BND
       - ticker: GOVT
-        name: "iShares U.S. Treasury Bond ETF"
+        name: iShares U.S. Treasury Bond ETF
+        isin: US4642874192
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.05
         aum_b: 30.0
-        inception: "2012-02-14"
-        description_en: "US Treasury bonds only — all maturities, zero credit risk"
-        description_he: "אג\"ח ממשלת ארה\"ב בלבד, ללא סיכון אשראי"
-
+        inception: '2012-02-14'
+        description_en: US Treasury bonds only — all maturities, zero credit risk
+        description_he: אג"ח ממשלת ארה"ב בלבד, ללא סיכון אשראי
       - ticker: VGIT
-        name: "Vanguard Intermediate-Term Treasury ETF"
+        name: Vanguard Intermediate-Term Treasury ETF
+        isin: US9219378760
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.04
         aum_b: 18.0
-        inception: "2009-11-19"
-        description_en: "Intermediate US Treasuries (3-10 year) — duration hedge"
-        description_he: "אג\"ח ממשלת ארה\"ב לטווח בינוני (3-10 שנים)"
-
+        inception: '2009-11-19'
+        description_en: Intermediate US Treasuries (3-10 year) — duration hedge
+        description_he: אג"ח ממשלת ארה"ב לטווח בינוני (3-10 שנים)
       - ticker: TIP
-        name: "iShares TIPS Bond ETF"
+        name: iShares TIPS Bond ETF
+        isin: US4642871762
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.19
         aum_b: 20.0
-        inception: "2003-12-04"
-        description_en: "Treasury Inflation-Protected Securities — inflation hedge"
-        description_he: "אג\"ח צמוד אינפלציה אמריקאי — הגנה מפני אינפלציה"
-
+        inception: '2003-12-04'
+        description_en: Treasury Inflation-Protected Securities — inflation hedge
+        description_he: אג"ח צמוד אינפלציה אמריקאי — הגנה מפני אינפלציה
       - ticker: SCHZ
-        name: "Schwab U.S. Aggregate Bond ETF"
+        name: Schwab U.S. Aggregate Bond ETF
+        isin: US8085247205
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 10.0
-        inception: "2011-07-01"
-        description_en: "Ultra-low cost total US bond market"
-        description_he: "שוק האג\"ח האמריקאי בעלות נמוכה מאוד"
-
+        inception: '2011-07-01'
+        description_en: Ultra-low cost total US bond market
+        description_he: שוק האג"ח האמריקאי בעלות נמוכה מאוד
       - ticker: IEF
-        name: "iShares 7-10 Year Treasury Bond ETF"
+        name: iShares 7-10 Year Treasury Bond ETF
+        isin: US4642874402
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.15
         aum_b: 30.0
-        inception: "2002-07-22"
-        description_en: "7-10 year US Treasuries — intermediate duration"
-        description_he: "אג\"ח ממשלת ארה\"ב 7-10 שנים"
-
+        inception: '2002-07-22'
+        description_en: 7-10 year US Treasuries — intermediate duration
+        description_he: אג"ח ממשלת ארה"ב 7-10 שנים
       - ticker: LQD
-        name: "iShares iBoxx $ Investment Grade Corporate Bond ETF"
+        name: iShares iBoxx $ Investment Grade Corporate Bond ETF
+        isin: US4642872422
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.14
         aum_b: 35.0
-        inception: "2002-07-22"
-        description_en: "Investment grade corporate bonds — yield premium over Treasuries"
-        description_he: "אג\"ח קורפורייט בדירוג השקעה, פרמיית תשואה מעל ממשלתי"
-
+        inception: '2002-07-22'
+        description_en: Investment grade corporate bonds — yield premium over Treasuries
+        description_he: אג"ח קורפורייט בדירוג השקעה, פרמיית תשואה מעל ממשלתי
       - ticker: VGLT
-        name: "Vanguard Long-Term Treasury ETF"
+        name: Vanguard Long-Term Treasury ETF
+        isin: US9219378844
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.04
         aum_b: 10.0
-        inception: "2009-11-19"
-        description_en: "Long-term US Treasuries (10-30 year) — maximum duration exposure"
-        description_he: "אג\"ח ממשלת ארה\"ב לטווח ארוך (10-30 שנה)"
-
+        inception: '2009-11-19'
+        description_en: Long-term US Treasuries (10-30 year) — maximum duration exposure
+        description_he: אג"ח ממשלת ארה"ב לטווח ארוך (10-30 שנה)
       - ticker: BNDX
-        name: "Vanguard Total International Bond ETF"
+        name: Vanguard Total International Bond ETF
+        isin: US9219378943
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.07
         aum_b: 55.0
-        inception: "2013-05-31"
-        description_en: "International bonds ex-US, currency-hedged — global fixed income diversification"
-        description_he: "אג\"ח בינלאומי ex-US, מגודר מטבע — גיוון אג\"ח גלובלי"
-
+        inception: '2013-05-31'
+        description_en: International bonds ex-US, currency-hedged — global fixed income diversification
+        description_he: אג"ח בינלאומי ex-US, מגודר מטבע — גיוון אג"ח גלובלי
+      - ticker: AGGG
+        name: iShares Core Global Aggregate Bond UCITS ETF (Dist)
+        isin: IE00B43QJJ40
+        domicile: IE
+        distribution: Distributing
+        ucits: true
+        ter: 0.1
+        aum_b: 4.0
+        inception: '2017-09-21'
+        description_en: Global aggregate bonds, USD-hedged — UCITS Distributing alternative to BND/BNDX
+        description_he: אג"ח גלובלי מצרפי, מגודר USD — מקבילה UCITS ל-BND
+      - ticker: VAGS
+        name: Vanguard Global Aggregate Bond UCITS ETF (Acc)
+        isin: IE00BG47KH54
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.1
+        aum_b: 3.0
+        inception: '2018-12-04'
+        description_en: Global aggregate bonds — UCITS Accumulating, GBP-hedged share class also available
+        description_he: אג"ח גלובלי מצרפי, UCITS Accumulating
+      - ticker: IDTL
+        name: iShares USD Treasury Bond 20+yr UCITS ETF (Dist)
+        isin: IE00BSKRJZ44
+        domicile: IE
+        distribution: Distributing
+        ucits: true
+        ter: 0.07
+        aum_b: 2.0
+        inception: '2015-12-04'
+        description_en: Long-duration US Treasuries (20yr+) in UCITS wrapper — alternative to TLT
+        description_he: אג"ח ממשלת ארה"ב לטווח ארוך (20+ שנה), UCITS — מקבילה ל-TLT
   ULTRA_SHORT_TERM:
-    description_en: "Cash equivalents — for Short-Term buckets only"
-    description_he: "שקול-מזומן — לשימוש ב-Buckets קצרי-טווח בלבד"
+    description_en: Cash equivalents — for Short-Term buckets only
+    description_he: שקול-מזומן — לשימוש ב-Buckets קצרי-טווח בלבד
     max_pct: null
-    allowed_horizon: [SHORT, MEDIUM, LONG]
+    allowed_horizon:
+      - SHORT
+      - MEDIUM
+      - LONG
     etfs:
       - ticker: SGOV
-        name: "iShares 0-3 Month Treasury Bond ETF"
+        name: iShares 0-3 Month Treasury Bond ETF
+        isin: US46435U7019
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.09
         aum_b: 35.0
-        inception: "2020-05-26"
-        description_en: "T-bills 0-3 months — closest to cash with yield"
-        description_he: "אג\"ח ממשלת ארה\"ב 0-3 חודשים — הדבר הקרוב ביותר למזומן"
-
+        inception: '2020-05-26'
+        description_en: T-bills 0-3 months — closest to cash with yield
+        description_he: אג"ח ממשלת ארה"ב 0-3 חודשים — הדבר הקרוב ביותר למזומן
       - ticker: BIL
-        name: "SPDR Bloomberg 1-3 Month T-Bill ETF"
+        name: SPDR Bloomberg 1-3 Month T-Bill ETF
+        isin: US78468R6633
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.1354
         aum_b: 35.0
-        inception: "2007-05-25"
-        description_en: "T-bills 1-3 months — cash equivalent with daily liquidity"
-        description_he: "T-Bills לטווח קצר מאוד, נזילות יומית"
-
+        inception: '2007-05-25'
+        description_en: T-bills 1-3 months — cash equivalent with daily liquidity
+        description_he: T-Bills לטווח קצר מאוד, נזילות יומית
       - ticker: SHV
-        name: "iShares Short Treasury Bond ETF"
+        name: iShares Short Treasury Bond ETF
+        isin: US4642886877
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.15
         aum_b: 25.0
-        inception: "2007-01-05"
-        description_en: "Treasury bonds under 1 year — low duration, stable"
-        description_he: "אג\"ח ממשלת ארה\"ב תחת שנה, מינימום תנודתיות"
-
+        inception: '2007-01-05'
+        description_en: Treasury bonds under 1 year — low duration, stable
+        description_he: אג"ח ממשלת ארה"ב תחת שנה, מינימום תנודתיות
       - ticker: CLTL
-        name: "Invesco Treasury Collateral ETF"
+        name: Invesco Treasury Collateral ETF
+        isin: US46138E5172
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.08
         aum_b: 5.0
-        inception: "2018-01-04"
-        description_en: "Treasury collateral — ultra-short duration"
-        description_he: "בטחונות ממשלתיים, משך זמן קצר מאוד"
-
+        inception: '2018-01-04'
+        description_en: Treasury collateral — ultra-short duration
+        description_he: בטחונות ממשלתיים, משך זמן קצר מאוד
       - ticker: TBLL
-        name: "SPDR Bloomberg 3-12 Month T-Bill ETF"
+        name: SPDR Bloomberg 3-12 Month T-Bill ETF
+        isin: US78464A6968
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.1356
         aum_b: 6.0
-        inception: "2018-08-08"
-        description_en: "T-bills 3-12 months — slightly longer than BIL, similar stability"
-        description_he: "T-Bills 3-12 חודשים, יציבות דומה ל-BIL"
-
+        inception: '2018-08-08'
+        description_en: T-bills 3-12 months — slightly longer than BIL, similar stability
+        description_he: T-Bills 3-12 חודשים, יציבות דומה ל-BIL
   REITS:
-    description_en: "Real Estate Investment Trusts — hard cap 15%"
-    description_he: "קרנות נדל\"ן (REIT) — תקרה קשיחה 15%"
+    description_en: Real Estate Investment Trusts — hard cap 15%
+    description_he: קרנות נדל"ן (REIT) — תקרה קשיחה 15%
     max_pct: 15.0
-    allowed_horizon: [LONG]
+    allowed_horizon:
+      - LONG
     etfs:
       - ticker: VNQ
-        name: "Vanguard Real Estate ETF"
+        name: Vanguard Real Estate ETF
+        isin: US9229085538
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.13
         aum_b: 35.0
-        inception: "2004-09-23"
-        description_en: "Broad US REITs — 150+ holdings, low cost"
-        description_he: "REITs אמריקאיים רחבים, 150+ אחזקות, עלות נמוכה"
-
+        inception: '2004-09-23'
+        description_en: Broad US REITs — 150+ holdings, low cost
+        description_he: REITs אמריקאיים רחבים, 150+ אחזקות, עלות נמוכה
       - ticker: REET
-        name: "iShares Global REIT ETF"
+        name: iShares Global REIT ETF
+        isin: US4642887901
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.14
         aum_b: 4.0
-        inception: "2014-07-08"
-        description_en: "Global REITs — US + international real estate"
-        description_he: "REITs גלובליים כולל בינלאומי"
-
+        inception: '2014-07-08'
+        description_en: Global REITs — US + international real estate
+        description_he: REITs גלובליים כולל בינלאומי
       - ticker: SCHH
-        name: "Schwab U.S. REIT ETF"
+        name: Schwab U.S. REIT ETF
+        isin: US8085246769
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.07
         aum_b: 7.0
-        inception: "2011-01-13"
-        description_en: "US REITs — lowest cost option"
-        description_he: "REITs אמריקאיים בעלות הנמוכה ביותר"
-
+        inception: '2011-01-13'
+        description_en: US REITs — lowest cost option
+        description_he: REITs אמריקאיים בעלות הנמוכה ביותר
       - ticker: USRT
-        name: "iShares Core U.S. REIT ETF"
+        name: iShares Core U.S. REIT ETF
+        isin: US4642886117
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.08
         aum_b: 3.0
-        inception: "2007-05-01"
-        description_en: "Core US REITs — iShares alternative to VNQ"
-        description_he: "REITs אמריקאיים ליבה, חלופת iShares"
-
+        inception: '2007-05-01'
+        description_en: Core US REITs — iShares alternative to VNQ
+        description_he: REITs אמריקאיים ליבה, חלופת iShares
       - ticker: IYR
-        name: "iShares U.S. Real Estate ETF"
+        name: iShares U.S. Real Estate ETF
+        isin: US4642877397
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.39
         aum_b: 5.0
-        inception: "2000-06-12"
-        description_en: "US real estate including REITs — long history (2000)"
-        description_he: "נדל\"ן אמריקאי כולל REITs, היסטוריה ארוכה מ-2000"
-
+        inception: '2000-06-12'
+        description_en: US real estate including REITs — long history (2000)
+        description_he: נדל"ן אמריקאי כולל REITs, היסטוריה ארוכה מ-2000
+      - ticker: IPRP
+        name: iShares European Property Yield UCITS ETF (Dist)
+        isin: IE00B0M63284
+        domicile: IE
+        distribution: Distributing
+        ucits: true
+        ter: 0.4
+        aum_b: 1.4
+        inception: '2006-10-26'
+        description_en: European REITs (NOT a US-REIT replacement) — distinct geographic exposure
+        description_he: REITs אירופאיים (אינם תחליף ל-VNQ) — חשיפה גיאוגרפית אחרת
   COMMODITIES_HEDGE:
-    description_en: "Gold & commodities hedge — hard cap 10%"
-    description_he: "גידור זהב ומוצרי גלם — תקרה קשיחה 10%"
+    description_en: Gold & commodities hedge — hard cap 10%
+    description_he: גידור זהב ומוצרי גלם — תקרה קשיחה 10%
     max_pct: 10.0
-    allowed_horizon: [LONG]
+    allowed_horizon:
+      - LONG
     etfs:
       - ticker: IAU
-        name: "iShares Gold Trust"
+        name: iShares Gold Trust
+        isin: US4642851053
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.25
         aum_b: 35.0
-        inception: "2005-01-21"
-        description_en: "Physical gold — large, liquid, low spread"
-        description_he: "זהב פיזי — גדול, נזיל, ספרד נמוך"
-
+        inception: '2005-01-21'
+        description_en: Physical gold — large, liquid, low spread
+        description_he: זהב פיזי — גדול, נזיל, ספרד נמוך
       - ticker: GLDM
-        name: "SPDR Gold MiniShares Trust"
-        ter: 0.10
+        name: SPDR Gold MiniShares Trust
+        isin: US78463V8077
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.1
         aum_b: 12.0
-        inception: "2018-06-25"
-        description_en: "Lowest-cost physical gold ETF"
-        description_he: "קרן זהב פיזי בעלות הנמוכה ביותר"
-
+        inception: '2018-06-25'
+        description_en: Lowest-cost physical gold ETF
+        description_he: קרן זהב פיזי בעלות הנמוכה ביותר
       - ticker: SGOL
-        name: "Aberdeen Physical Gold Shares ETF"
+        name: Aberdeen Physical Gold Shares ETF
+        isin: US0036061046
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.17
         aum_b: 3.5
-        inception: "2009-09-09"
-        description_en: "Physical gold stored in Switzerland"
-        description_he: "זהב פיזי המאוחסן בשוויץ"
-
+        inception: '2009-09-09'
+        description_en: Physical gold stored in Switzerland
+        description_he: זהב פיזי המאוחסן בשוויץ
       - ticker: BAR
-        name: "GraniteShares Gold Trust"
+        name: GraniteShares Gold Trust
+        isin: US3873518003
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.17
         aum_b: 1.0
-        inception: "2017-08-31"
-        description_en: "Physical gold — low cost alternative"
-        description_he: "זהב פיזי, חלופה בעלות נמוכה"
-
+        inception: '2017-08-31'
+        description_en: Physical gold — low cost alternative
+        description_he: זהב פיזי, חלופה בעלות נמוכה
       - ticker: GLD
-        name: "SPDR Gold Shares"
-        ter: 0.40
+        name: SPDR Gold Shares
+        isin: US78463V1070
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.4
         aum_b: 65.0
-        inception: "2004-11-18"
-        description_en: "Oldest and largest gold ETF — deep liquidity, long history"
-        description_he: "קרן הזהב הגדולה ביותר, נזילות עמוקה, היסטוריה ארוכה מ-2004"
-
+        inception: '2004-11-18'
+        description_en: Oldest and largest gold ETF — deep liquidity, long history
+        description_he: קרן הזהב הגדולה ביותר, נזילות עמוקה, היסטוריה ארוכה מ-2004
+      - ticker: SGLN
+        name: iShares Physical Gold ETC
+        isin: IE00B4ND3602
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.12
+        aum_b: 18.0
+        inception: '2011-04-08'
+        description_en: Physical gold ETC (UCITS-eligible) — alternative to IAU/GLDM for European tax residence
+        description_he: זהב פיזי (ETC), זמין UCITS — מקבילה ל-IAU/GLDM
   EMERGING_MARKETS:
-    description_en: "Emerging markets broad equity exposure"
-    description_he: "חשיפה רחבה לשווקים מתעוררים"
+    description_en: Emerging markets broad equity exposure
+    description_he: חשיפה רחבה לשווקים מתעוררים
     max_pct: null
-    allowed_horizon: [LONG]
+    allowed_horizon:
+      - LONG
     etfs:
       - ticker: VWO
-        name: "Vanguard FTSE Emerging Markets ETF"
+        name: Vanguard FTSE Emerging Markets ETF
+        isin: US9220428588
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.08
         aum_b: 75.0
-        inception: "2005-03-04"
-        description_en: "Broad EM — FTSE index, excludes South Korea"
-        description_he: "שווקים מתעוררים רחבים, מדד FTSE, ללא דרום קוריאה"
-
+        inception: '2005-03-04'
+        description_en: Broad EM — FTSE index, excludes South Korea
+        description_he: שווקים מתעוררים רחבים, מדד FTSE, ללא דרום קוריאה
       - ticker: IEMG
-        name: "iShares Core MSCI Emerging Markets ETF"
+        name: iShares Core MSCI Emerging Markets ETF
+        isin: US46434G1031
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.09
         aum_b: 70.0
-        inception: "2012-10-18"
-        description_en: "Broad EM — MSCI index, includes South Korea"
-        description_he: "שווקים מתעוררים רחבים, מדד MSCI, כולל דרום קוריאה"
-
+        inception: '2012-10-18'
+        description_en: Broad EM — MSCI index, includes South Korea
+        description_he: שווקים מתעוררים רחבים, מדד MSCI, כולל דרום קוריאה
       - ticker: EEM
-        name: "iShares MSCI Emerging Markets ETF"
-        ter: 0.70
+        name: iShares MSCI Emerging Markets ETF
+        isin: US4642872349
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.7
         aum_b: 25.0
-        inception: "2003-04-07"
-        description_en: "Legacy EM ETF — higher cost, long history to 2003"
-        description_he: "קרן EM ותיקה, עלות גבוהה יותר, היסטוריה ארוכה"
-
+        inception: '2003-04-07'
+        description_en: Legacy EM ETF — higher cost, long history to 2003
+        description_he: קרן EM ותיקה, עלות גבוהה יותר, היסטוריה ארוכה
       - ticker: DEM
-        name: "WisdomTree Emerging Markets High Dividend Fund"
+        name: WisdomTree Emerging Markets High Dividend Fund
+        isin: US97717W4083
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.63
         aum_b: 2.0
-        inception: "2007-07-13"
-        description_en: "EM dividend-weighted — value tilt, proxy for AVES pre-2021"
-        description_he: "EM עם משקל דיבידנד, הטיית ערך, proxy ל-AVES"
-
+        inception: '2007-07-13'
+        description_en: EM dividend-weighted — value tilt, proxy for AVES pre-2021
+        description_he: EM עם משקל דיבידנד, הטיית ערך, proxy ל-AVES
       - ticker: SPEM
-        name: "SPDR Portfolio Emerging Markets ETF"
+        name: SPDR Portfolio Emerging Markets ETF
+        isin: US78464A4476
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.03
         aum_b: 10.0
-        inception: "2007-03-20"
-        description_en: "Ultra-low cost EM — SPDR/SSGA, MSCI-based"
-        description_he: "שווקים מתעוררים בעלות נמוכה מאוד"
-
+        inception: '2007-03-20'
+        description_en: Ultra-low cost EM — SPDR/SSGA, MSCI-based
+        description_he: שווקים מתעוררים בעלות נמוכה מאוד
       - ticker: EMXC
-        name: "iShares MSCI Emerging Markets ex China ETF"
+        name: iShares MSCI Emerging Markets ex China ETF
+        isin: US46434G6741
+        domicile: US
+        distribution: Distributing
+        ucits: false
         ter: 0.25
         aum_b: 9.0
-        inception: "2017-07-25"
-        description_en: "EM excluding China — for investors wanting reduced China concentration"
-        description_he: "שווקים מתעוררים ללא סין, למשקיעים הרוצים להפחית ריכוז סין"
-
-# ─────────────────────────────────────────────
-# BLACKLIST
-# ─────────────────────────────────────────────
+        inception: '2017-07-25'
+        description_en: EM excluding China — for investors wanting reduced China concentration
+        description_he: שווקים מתעוררים ללא סין, למשקיעים הרוצים להפחית ריכוז סין
+      - ticker: VFEA
+        name: Vanguard FTSE Emerging Markets UCITS ETF (Acc)
+        isin: IE00BK5BR733
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.22
+        aum_b: 4.0
+        inception: '2019-07-23'
+        description_en: Emerging markets equity in UCITS Accumulating wrapper — alternative to VWO/IEMG
+        description_he: מניות שווקים מתעוררים, UCITS Accumulating — מקבילה ל-VWO
+      - ticker: EIMI
+        name: iShares Core MSCI EM IMI UCITS ETF (Acc)
+        isin: IE00BKM4GZ66
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.18
+        aum_b: 21.0
+        inception: '2014-05-30'
+        description_en: Broad EM IMI in UCITS Accumulating — alternative to IEMG
+        description_he: EM רחב (IMI), UCITS Accumulating — מקבילה ל-IEMG
 blacklist:
   leveraged:
-    reason: "Leveraged ETFs experience decay and are unsuitable for long-term holding"
-    reason_he: "קרנות ממונפות סובלות מדעיכה ואינן מתאימות להחזקה ארוכת טווח"
-    tickers: [TQQQ, SQQQ, SOXL, SOXS, UPRO, SPXU, TMF, TYD, UDOW, SDOW, UVXY, SVXY, LABU, LABD]
-
+    reason: Leveraged ETFs experience decay and are unsuitable for long-term holding
+    reason_he: קרנות ממונפות סובלות מדעיכה ואינן מתאימות להחזקה ארוכת טווח
+    tickers:
+      - TQQQ
+      - SQQQ
+      - SOXL
+      - SOXS
+      - UPRO
+      - SPXU
+      - TMF
+      - TYD
+      - UDOW
+      - SDOW
+      - UVXY
+      - SVXY
+      - LABU
+      - LABD
   covered_call:
-    reason: "Covered call strategies cap upside and create complex tax events"
-    reason_he: "אסטרטגיות Covered Call מגבילות עלייה ויוצרות אירועי מס מורכבים"
-    tickers: [JEPI, JEPQ, QYLD, XYLD, RYLD, NUSI, DIVO, OARK, SVOL]
-
+    reason: Covered call strategies cap upside and create complex tax events
+    reason_he: אסטרטגיות Covered Call מגבילות עלייה ויוצרות אירועי מס מורכבים
+    tickers:
+      - JEPI
+      - JEPQ
+      - QYLD
+      - XYLD
+      - RYLD
+      - NUSI
+      - DIVO
+      - OARK
+      - SVOL
   thematic_high_concentration:
-    reason: "Highly concentrated thematic funds with >25% single-stock risk"
-    reason_he: "קרנות ממוקדות בעלות ריכוז גבוה מדי במניה בודדת"
-    tickers: [ARKK, ARKW, ARKF, ARKG, ARKQ, ICLN, TAN, BLOK, BOTZ, ROBO, DRIV, HACK, BUG]
-
+    reason: Highly concentrated thematic funds with >25% single-stock risk
+    reason_he: קרנות ממוקדות בעלות ריכוז גבוה מדי במניה בודדת
+    tickers:
+      - ARKK
+      - ARKW
+      - ARKF
+      - ARKG
+      - ARKQ
+      - ICLN
+      - TAN
+      - BLOK
+      - BOTZ
+      - ROBO
+      - DRIV
+      - HACK
+      - BUG
   inverse:
-    reason: "Inverse ETFs are short-term tactical instruments, not long-term holdings"
-    reason_he: "קרנות הפוכות הן כלי טקטי לטווח קצר, לא להחזקה ארוכת טווח"
-    tickers: [SH, SDS, PSQ, DOG, RWM, MYY, SQQQ, SPXS]
-
+    reason: Inverse ETFs are short-term tactical instruments, not long-term holdings
+    reason_he: קרנות הפוכות הן כלי טקטי לטווח קצר, לא להחזקה ארוכת טווח
+    tickers:
+      - SH
+      - SDS
+      - PSQ
+      - DOG
+      - RWM
+      - MYY
+      - SQQQ
+      - SPXS
   high_ter:
-    reason: "TER above 0.50% — cost drag is too significant for long-term compounding"
-    reason_he: "עלות שנתית מעל 0.50% — מכרסמת בצמיחה לאורך זמן"
-    threshold: 0.50
-    exceptions: [DEM, EEM, DLS]  # kept for proxy/history reasons only
+    reason: TER above 0.50% — cost drag is too significant for long-term compounding
+    reason_he: עלות שנתית מעל 0.50% — מכרסמת בצמיחה לאורך זמן
+    threshold: 0.5
+    exceptions:
+      - DEM
+      - EEM
+      - DLS

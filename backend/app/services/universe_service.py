@@ -89,6 +89,24 @@ def get_etfs_in_bucket(bucket_name: str) -> list[dict[str, Any]]:
     ]
 
 
+def get_ucits_alternatives(ticker: str) -> list[str]:
+    """Return UCITS-domiciled tickers in the same bucket as the given (US-domiciled) ticker.
+
+    Returns [] if the ticker is unknown, already UCITS, or has no UCITS peer.
+    """
+    metadata = get_etf_metadata(ticker)
+    if metadata is None or metadata.get("ucits", False):
+        return []
+    bucket = metadata.get("bucket")
+    if not bucket:
+        return []
+    return [
+        e["ticker"]
+        for e in get_etfs_in_bucket(bucket)
+        if e.get("ucits", False) and e["ticker"] != ticker
+    ]
+
+
 def get_blacklist() -> dict[str, Any]:
     return _load().get("blacklist", {})
 

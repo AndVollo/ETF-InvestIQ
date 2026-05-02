@@ -44,6 +44,23 @@ def audit() -> int:
             if not etf.get("aum_b"):
                 warnings.append(f"{ticker}: missing AUM")
 
+            # UCITS / domicile checks
+            domicile = etf.get("domicile")
+            distribution = etf.get("distribution")
+            ucits = etf.get("ucits")
+            if domicile not in ("US", "IE", "LU"):
+                errors.append(f"{ticker}: missing or invalid domicile ({domicile!r})")
+            if distribution not in ("Distributing", "Accumulating"):
+                errors.append(f"{ticker}: missing or invalid distribution ({distribution!r})")
+            if not isinstance(ucits, bool):
+                errors.append(f"{ticker}: ucits flag must be bool, got {type(ucits).__name__}")
+            if ucits and domicile not in ("IE", "LU"):
+                warnings.append(f"{ticker}: ucits=true but domicile={domicile} (UCITS funds must be IE or LU)")
+            if domicile == "US" and ucits:
+                errors.append(f"{ticker}: domicile=US is incompatible with ucits=true")
+            if etf.get("isin") and not isinstance(etf["isin"], str):
+                errors.append(f"{ticker}: isin must be a string when set")
+
     # Duplicate check
     seen: set[str] = set()
     for t in all_tickers:
