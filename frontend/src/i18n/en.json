@@ -202,7 +202,12 @@
     "saved": "Saved",
     "tax_status_section": "Tax Status",
     "us_citizen_label": "US citizen (PFIC risk)",
-    "us_citizen_help": "When checked, the system will not suggest Irish UCITS alternatives due to PFIC tax risk."
+    "us_citizen_help": "When checked, the system will not suggest Irish UCITS alternatives due to PFIC tax risk.",
+    "backup_section": "Database Backup",
+    "backup_help": "Create a timestamped copy of the DB next to the original. Recommended before any major portfolio change.",
+    "backup_now": "Back up now",
+    "backup_success": "Backup created: {{path}}",
+    "backup_failed": "Backup failed"
   },
   "info": {
     "ucits_alternative_available": "{{us_pct}}% of your allocation is US-domiciled ETFs. Some have Irish UCITS peers that may save on tax."

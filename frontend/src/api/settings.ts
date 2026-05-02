@@ -17,3 +17,13 @@ export const useUpdateSetting = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   })
 }
+
+export interface BackupResponse {
+  path: string
+  bytes: number
+}
+
+export const useBackupDb = () =>
+  useMutation<BackupResponse, unknown, void>({
+    mutationFn: () => client.post<BackupResponse>('/settings/backup').then(r => r.data),
+  })

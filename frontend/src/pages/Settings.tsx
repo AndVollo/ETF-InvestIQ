@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSettings, useUpdateSetting } from '@/api/settings'
+import { useSettings, useUpdateSetting, useBackupDb } from '@/api/settings'
 import { useLanguageStore } from '@/store/languageStore'
 import { Button } from '@/components/common/Button'
 import { Input } from '@/components/common/Input'
@@ -25,6 +25,7 @@ export default function Settings() {
 
   const { data, isLoading } = useSettings()
   const updateSetting = useUpdateSetting()
+  const backupDb = useBackupDb()
   const { language, theme, setLanguage, setTheme } = useLanguageStore()
 
   const settings: Record<string, unknown> = {}
@@ -179,7 +180,30 @@ export default function Settings() {
         )}
 
         {activeTab === 'advanced' && (
-          <p className="text-sm text-gray-500">{t('common.na')}</p>
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                {t('settings.backup_section')}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-md">
+                {t('settings.backup_help')}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const res = await backupDb.mutateAsync()
+                    setToast(t('settings.backup_success', { path: res.path }))
+                  } catch {
+                    setToast(t('settings.backup_failed'))
+                  }
+                }}
+                loading={backupDb.isPending}
+              >
+                {t('settings.backup_now')}
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 

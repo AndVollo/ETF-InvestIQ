@@ -1,15 +1,27 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import AppError, NotFoundError
+from app.core.logging import get_logger
 from app.db.models.settings import SETTING_KEYS
 from app.db.session import get_db
 from app.schemas.app_settings import SettingResponse, SettingUpdate, SettingsListResponse
 from app.services import settings_service
 
+logger = get_logger(__name__)
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+
+class BackupResponse(BaseModel):
+    path: str
+    bytes: int
+
+
+class _BackupFailedError(AppError):
+    status_code = 503
 
 
 @router.get("/", response_model=SettingsListResponse)
@@ -34,3 +46,24 @@ async def update_setting(
 ) -> SettingResponse:
     await settings_service.set_setting(key, payload.value, db)
     return SettingResponse(key=key, value=payload.value)
+
+
+@router.post("/backup", response_model=BackupResponse)
+async def create_backup() -> BackupResponse:
+    """Snapshot the live SQLite DB to a timestamped sibling file.
+
+    Backups land next to the live DB so they share a filesystem (atomic
+    copy, no cross-device move). The user can then sync them off-device
+    however they want.
+    """
+    from scripts.backup_db import create_backup as _create_backup
+
+    try:
+        path = _create_backup()
+    except FileNotFoundError as exc:
+        raise _BackupFailedError("error.backup_db_missing", {"detail": str(exc)}) from exc
+    except OSError as exc:
+        logger.error("backup_failed", error=str(exc))
+        raise _BackupFailedError("error.backup_failed", {"detail": str(exc)}) from exc
+
+    return BackupResponse(path=str(path), bytes=path.stat().st_size)

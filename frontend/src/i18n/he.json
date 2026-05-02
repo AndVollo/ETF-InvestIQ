@@ -202,7 +202,12 @@
     "saved": "נשמר",
     "tax_status_section": "מצב מס",
     "us_citizen_label": "אזרח/ית ארה\"ב (PFIC risk)",
-    "us_citizen_help": "כשמסומן, המערכת לא תציע מקבילות UCITS איריות בגלל סיכון PFIC."
+    "us_citizen_help": "כשמסומן, המערכת לא תציע מקבילות UCITS איריות בגלל סיכון PFIC.",
+    "backup_section": "גיבוי DB",
+    "backup_help": "צור עותק מתוייג-בזמן של ה-DB ליד הקובץ המקורי. מומלץ לפני שינויים גדולים בתיק.",
+    "backup_now": "בצע גיבוי עכשיו",
+    "backup_success": "גיבוי נוצר: {{path}}",
+    "backup_failed": "גיבוי נכשל"
   },
   "info": {
     "ucits_alternative_available": "ההקצאה שלך כוללת {{us_pct}}% ETFs אמריקאים. למקצתם יש מקבילות UCITS איריות שיכולות לחסוך במס."
