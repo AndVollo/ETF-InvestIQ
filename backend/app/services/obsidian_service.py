@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -85,6 +86,18 @@ def _load_template(path: Path, fallback: str) -> str:
         return fallback
 
 
+def _atomic_write(filepath: Path, content: str) -> None:
+    """Write a file atomically: stage to <name>.tmp, then os.replace().
+
+    PRD §12 Sprint 8 demands atomic writes — Obsidian sometimes opens files
+    while we're writing them, and a crash mid-write would otherwise leave
+    a half-rendered journal entry that the user might mistake for real data.
+    """
+    tmp = filepath.with_suffix(filepath.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, filepath)
+
+
 async def write_deposit_journal(
     *,
     bucket_name: str,
@@ -143,7 +156,7 @@ async def write_deposit_journal(
     )
 
     try:
-        filepath.write_text(content, encoding="utf-8")
+        _atomic_write(filepath, content)
         logger.info("obsidian_entry_written", kind="deposit", path=str(filepath))
         return str(filepath)
     except OSError as exc:
@@ -203,7 +216,7 @@ async def write_architect_journal(
     )
 
     try:
-        filepath.write_text(content, encoding="utf-8")
+        _atomic_write(filepath, content)
         logger.info("obsidian_entry_written", kind="architect", path=str(filepath))
         return str(filepath)
     except OSError as exc:

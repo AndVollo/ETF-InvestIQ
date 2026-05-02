@@ -251,6 +251,44 @@ async def test_write_architect_journal_includes_cooling_off_timestamp(tmp_path: 
     assert cooling.isoformat() in content
 
 
+# ── Atomic write ──────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_write_deposit_journal_uses_atomic_replace(tmp_path: Path):
+    """No .tmp file is left behind after a successful write."""
+    result = await obsidian_service.write_deposit_journal(
+        bucket_name="X",
+        orders=_orders(),
+        amount_input=1.0,
+        currency="USD",
+        amount_usd=1.0,
+        portfolio_snapshot=None,
+        sector_exposures=None,
+        worst_case_pct=None,
+        worst_case_amount=None,
+        vault_path=str(tmp_path),
+        journal_subfolder="J",
+    )
+    assert result is not None
+    journal_dir = tmp_path / "J"
+    leftover = list(journal_dir.glob("*.tmp"))
+    assert leftover == []
+
+
+def test_atomic_write_does_not_leave_tmp_on_success(tmp_path: Path):
+    target = tmp_path / "out.md"
+    obsidian_service._atomic_write(target, "hello")
+    assert target.read_text(encoding="utf-8") == "hello"
+    assert not target.with_suffix(".md.tmp").exists()
+
+
+def test_atomic_write_overwrites_existing(tmp_path: Path):
+    target = tmp_path / "out.md"
+    target.write_text("old", encoding="utf-8")
+    obsidian_service._atomic_write(target, "new")
+    assert target.read_text(encoding="utf-8") == "new"
+
+
 @pytest.mark.asyncio
 async def test_write_architect_journal_handles_empty_rationale(tmp_path: Path):
     result = await obsidian_service.write_architect_journal(
