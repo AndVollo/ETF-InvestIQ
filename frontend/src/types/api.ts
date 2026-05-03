@@ -1,8 +1,23 @@
+// ── Auth ──────────────────────────────────────────────────────────────────────
+export interface AuthUser {
+  id: number
+  email: string
+  full_name: string
+  is_active: boolean
+}
+
+export interface AuthResponse {
+  access_token: string
+  token_type: string
+  user: AuthUser
+}
+
 // ── Buckets ───────────────────────────────────────────────────────────────────
 export interface Bucket {
   id: number
   name: string
   horizon_type: 'SHORT' | 'MEDIUM' | 'LONG'
+  initial_investment: number | null
   target_amount: number | null
   target_currency: string
   target_date: string | null
@@ -15,6 +30,7 @@ export interface Bucket {
 export interface BucketCreate {
   name: string
   horizon_type: 'SHORT' | 'MEDIUM' | 'LONG'
+  initial_investment?: number
   target_amount?: number
   target_currency?: string
   target_date?: string
@@ -133,26 +149,43 @@ export type Distribution = 'Distributing' | 'Accumulating'
 
 export interface ETFScoreResponse {
   ticker: string
+  name: string
   bucket: string
   isin: string | null
   domicile: Domicile
   distribution: Distribution
   ucits: boolean
   ter: number | null
+  aum_b: number | null
+  inception: string | null
+  description_en: string
+  description_he: string
   composite_score: number | null
   component_scores: {
     cost: number | null
     sharpe_3y: number | null
     tracking_error: number | null
     liquidity_aum: number | null
+    sharpe_computed: boolean
   }
   stale: boolean
+  rank: number
+}
+
+export interface BucketInfo {
+  name: string
+  description_en: string
+  description_he: string
+  max_pct: number | null
+  allowed_horizon: string[]
+  etf_count: number
 }
 
 export interface UniverseListResponse {
   version: string
   total_etfs: number
-  buckets: Record<string, ETFScoreResponse[]>
+  buckets: BucketInfo[]
+  etfs: ETFScoreResponse[]
 }
 
 // ── Valuation ─────────────────────────────────────────────────────────────────

@@ -12,7 +12,8 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import yfinance as yf
+
+# import yfinance as yf  # Moved to local imports to speed up startup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +32,7 @@ logger = get_logger(__name__)
 
 def _fetch_dividend_info_sync(ticker: str) -> dict[str, Any]:
     """Return forward yield (0–1) and last price from yfinance.info."""
+    import yfinance as yf
     try:
         info = yf.Ticker(ticker).info
         yield_pct = info.get("dividendYield") or info.get("trailingAnnualDividendYield") or 0.0
@@ -43,6 +45,7 @@ def _fetch_dividend_info_sync(ticker: str) -> dict[str, Any]:
 
 def _fetch_dividend_history_sync(ticker: str, years: int) -> list[dict[str, Any]]:
     """Return list of {date, amount_usd} for the past `years` years."""
+    import yfinance as yf
     try:
         t = yf.Ticker(ticker)
         divs = t.dividends

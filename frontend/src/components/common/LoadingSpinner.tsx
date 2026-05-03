@@ -3,14 +3,13 @@ interface LoadingSpinnerProps {
   className?: string
 }
 
-const sizeClass = { sm: 'h-4 w-4', md: 'h-8 w-8', lg: 'h-12 w-12' }
-
 export function LoadingSpinner({ size = 'md', className = '' }: LoadingSpinnerProps) {
+  const cls = ['spinner', size === 'lg' || size === 'md' ? 'spinner--lg' : '', className]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <div className={`flex items-center justify-center ${className}`}>
-      <span
-        className={`animate-spin rounded-full border-2 border-gray-200 border-t-primary-600 ${sizeClass[size]}`}
-      />
+    <div className="center-fill">
+      <span className={cls} />
     </div>
   )
 }

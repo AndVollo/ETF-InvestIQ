@@ -4,10 +4,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useBuckets } from '@/api/buckets'
 import { useCalculateDeposit, useConfirmDeposit, useDepositHistory } from '@/api/deposits'
 import type { DepositPlan } from '@/types/api'
-import { Button } from '@/components/common/Button'
-import { Input } from '@/components/common/Input'
-import { Badge } from '@/components/common/Badge'
+import { Card, Button, Badge, Field, Select, InputGroup, Seg, Icon } from '@/components/design'
 import { Toast } from '@/components/common/Toast'
+import { EmptyState } from '@/components/common/EmptyState'
 import { formatCurrency, formatDate } from '@/utils/formatting'
 
 export default function SmartDeposit() {
@@ -44,89 +43,153 @@ export default function SmartDeposit() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('deposit.title')}</h1>
-
-      <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('deposit.bucket_label')}</label>
-            <select
-              className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800"
-              value={bucketId}
-              onChange={(e) => { setBucketId(Number(e.target.value)); setPlan(null) }}
-            >
-              {buckets.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-          <Input
-            id="deposit-amount"
-            label={t('deposit.amount_label')}
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-          />
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('deposit.currency_label')}</label>
-            <select
-              className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value as 'USD' | 'ILS')}
-            >
-              <option value="USD">{t('common.usd')}</option>
-              <option value="ILS">{t('common.ils')}</option>
-            </select>
-          </div>
-        </div>
-        <Button onClick={handleCalculate} loading={calculateDeposit.isPending}>{t('deposit.calculate')}</Button>
-      </div>
-
-      {plan && (
-        <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm mb-6">
-          <h2 className="font-semibold mb-4 text-gray-900 dark:text-gray-100">{t('deposit.plan_title')}</h2>
-          {plan.prices_stale && <p className="text-xs text-warning mb-3">{t('deposit.prices_stale')}</p>}
-          {plan.warning && <p className="text-xs text-warning mb-3">{t(plan.warning as Parameters<typeof t>[0])}</p>}
-
-          <div className="divide-y divide-gray-100 dark:divide-gray-700 mb-4">
-            {plan.orders.map((order) => (
-              <div key={order.ticker} className="flex justify-between py-2.5 text-sm">
-                <span>
-                  <span className="font-mono font-medium">{order.ticker}</span>
-                  {' — '}
-                  {t('deposit.buy')} {order.units} {t('deposit.units')} {t('deposit.at_price')} ${order.est_price_usd.toFixed(2)}
-                </span>
-                <span className="font-medium">${order.est_total_usd.toFixed(0)}</span>
+    <div className="content">
+      <div className="content__inner">
+        <Card>
+          <Card.Header title={t('deposit.title')} subtitle={t('deposit.bucket_label')} />
+          <Card.Body>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+              <Field label={t('deposit.bucket_label')}>
+                <Select
+                  value={bucketId}
+                  onChange={(e) => { setBucketId(Number(e.target.value)); setPlan(null) }}
+                >
+                  {buckets.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </Select>
+              </Field>
+              <Field label={t('deposit.amount_label')}>
+                <InputGroup prefix={currency === 'USD' ? '$' : '₪'}>
+                  <input
+                    className="input-group__input tnum"
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                  />
+                </InputGroup>
+              </Field>
+              <Field label={t('deposit.currency_label')}>
+                <Seg<'USD' | 'ILS'>
+                  fullWidth
+                  value={currency}
+                  onChange={(v) => setCurrency(v)}
+                  options={[
+                    { value: 'USD', label: 'USD' },
+                    { value: 'ILS', label: 'ILS' },
+                  ]}
+                />
+              </Field>
+              <Button onClick={handleCalculate} loading={calculateDeposit.isPending}>
+                <Icon name="refresh" size={14} />
+                {t('deposit.calculate')}
+              </Button>
+            </div>
+            {plan?.fx_rate ? (
+              <div className="hint" style={{ marginTop: 10 }}>
+                <Icon name="info" size={12} /> 1 USD = {plan.fx_rate.toFixed(2)} ILS
               </div>
-            ))}
-          </div>
+            ) : null}
+          </Card.Body>
+        </Card>
 
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            <div className="flex justify-between"><span>{t('deposit.total_allocated')}</span><span>${plan.total_allocated_usd.toFixed(0)}</span></div>
-            <div className="flex justify-between"><span>{t('deposit.remainder')}</span><span>${plan.remainder_usd.toFixed(2)}</span></div>
-          </div>
+        {plan && (
+          <>
+            <Card>
+              <Card.Header
+                title={t('deposit.plan_title')}
+                subtitle={plan.warning ? t(plan.warning as Parameters<typeof t>[0]) : undefined}
+                actions={<Badge variant="success">dry-run</Badge>}
+              />
+              <Card.Body>
+                {plan.prices_stale && (
+                  <p className="hint" style={{ color: 'var(--warning)', marginBottom: 12 }}>
+                    {t('deposit.prices_stale')}
+                  </p>
+                )}
+                {plan.orders.map((o) => (
+                  <div key={o.ticker} className="order-row">
+                    <div className="order-row__icon"><Icon name="plus" size={14} /></div>
+                    <div className="order-row__ticker mono">{o.ticker}</div>
+                    <div className="order-row__name">{t('deposit.buy')} {o.units} {t('deposit.units')}</div>
+                    <div className="order-row__num">{o.units} {t('deposit.units')}</div>
+                    <div className="order-row__num text-muted">@ ${o.est_price_usd.toFixed(2)}</div>
+                    <div className="order-row__num" style={{ fontWeight: 500 }}>
+                      {formatCurrency(o.est_total_usd, 'USD')}
+                    </div>
+                  </div>
+                ))}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: 16,
+                    paddingTop: 16,
+                    borderTop: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  <div>
+                    <div className="text-muted" style={{ fontSize: 12 }}>{t('deposit.remainder')}</div>
+                    <div className="tnum" style={{ fontSize: 13 }}>
+                      {formatCurrency(plan.remainder_usd, 'USD')}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'end' }}>
+                    <div className="text-muted" style={{ fontSize: 12 }}>{t('deposit.total_allocated')}</div>
+                    <div className="tnum" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em' }}>
+                      {formatCurrency(plan.total_allocated_usd, 'USD')}
+                    </div>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
 
-          <Button onClick={handleConfirm} loading={confirmDeposit.isPending}>{t('deposit.confirm_btn')}</Button>
-        </div>
-      )}
-
-      <div className="rounded-xl bg-white dark:bg-gray-800 p-6 shadow-sm">
-        <h2 className="font-semibold mb-4 text-gray-900 dark:text-gray-100">{t('deposit.history_title')}</h2>
-        {!history || history.length === 0 ? (
-          <p className="text-sm text-gray-400">{t('deposit.no_history')}</p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-gray-700 text-sm">
-            {history.map((h) => (
-              <div key={h.id} className="flex justify-between py-2.5">
-                <span>{formatDate(h.created_at)}</span>
-                <span>{formatCurrency(h.amount, 'USD')}</span>
-                <Badge color="green">{h.orders.length} orders</Badge>
+            <div className="reminder">
+              <div
+                className="reminder__icon"
+                style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+              >
+                <Icon name="info" size={14} />
               </div>
-            ))}
-          </div>
+              <div className="reminder__body">{t('deposit.confirm_btn')}</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" onClick={() => setPlan(null)}>{t('common.back')}</Button>
+                <Button onClick={handleConfirm} loading={confirmDeposit.isPending}>
+                  <Icon name="check" size={14} /> {t('common.confirm')}
+                </Button>
+              </div>
+            </div>
+          </>
         )}
-      </div>
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        <Card>
+          <Card.Header title={t('deposit.history_title')} />
+          <Card.Body>
+            {!history || history.length === 0 ? (
+              <EmptyState message={t('deposit.no_history')} />
+            ) : (
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th className="num">Amount</th>
+                    <th className="num">Orders</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((h) => (
+                    <tr key={h.id}>
+                      <td>{formatDate(h.created_at)}</td>
+                      <td className="num tnum">{formatCurrency(h.amount, 'USD')}</td>
+                      <td className="num"><Badge variant="success">{h.orders.length}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card.Body>
+        </Card>
+
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </div>
     </div>
   )
 }

@@ -36,7 +36,7 @@ class ComponentScoresResponse(BaseModel):
 
 class ETFScoreResponse(ETFMetaResponse):
     composite_score: float
-    components: ComponentScoresResponse
+    component_scores: ComponentScoresResponse
     rank: int = 0
 
 
@@ -53,7 +53,7 @@ class UniverseListResponse(BaseModel):
     version: str
     total_etfs: int
     buckets: list[BucketInfo]
-    etfs: list[ETFMetaResponse]
+    etfs: list[ETFScoreResponse]
 
 
 class ShortlistRequest(BaseModel):

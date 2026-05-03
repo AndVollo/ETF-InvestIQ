@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.db.models.user import User
+from app.db.models.password_reset import PasswordResetCode
 from app.db.models.architect_session import ArchitectSession
 from app.db.models.bucket import GoalBucket
 from app.db.models.deposit_log import DepositLog
@@ -14,6 +16,8 @@ from app.db.models.settings import AppSetting
 from app.db.models.valuation_cache import ValuationCache
 
 __all__ = [
+    "User",
+    "PasswordResetCode",
     "GoalBucket",
     "Holding",
     "PriceHistory",

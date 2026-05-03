@@ -98,6 +98,28 @@ buckets:
         inception: '2019-07-23'
         description_en: Global all-world equity, UCITS Accumulating — Israeli tax-efficient alternative to VT
         description_he: חשיפה גלובלית כל-עולמית, UCITS Accumulating — מקבילה ל-VT עם יעילות מס
+      - ticker: VOO
+        name: Vanguard S&P 500 ETF
+        isin: US9229083632
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.03
+        aum_b: 400.0
+        inception: '2010-09-07'
+        description_en: Standard S&P 500 exposure — ultra low cost
+        description_he: מדד S&P 500 בעלות נמוכה מאוד
+      - ticker: SPY
+        name: SPDR S&P 500 ETF Trust
+        isin: US78462F1030
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.09
+        aum_b: 500.0
+        inception: '1993-01-22'
+        description_en: The original S&P 500 ETF — deep liquidity, higher cost than VOO
+        description_he: ה-ETF המקורי על S&P 500, נזילות עמוקה מאוד
       - ticker: CSPX
         name: iShares Core S&P 500 UCITS ETF (Acc)
         isin: IE00B5BMR087
@@ -754,6 +776,57 @@ buckets:
         inception: '2014-05-30'
         description_en: Broad EM IMI in UCITS Accumulating — alternative to IEMG
         description_he: EM רחב (IMI), UCITS Accumulating — מקבילה ל-IEMG
+  TECH_GROWTH:
+    description_en: Technology & Growth — Focus on Nasdaq-100 and innovation
+    description_he: טכנולוגיה וצמיחה — דגש על מדד Nasdaq-100 וחדשנות
+    max_pct: null
+    allowed_horizon:
+      - LONG
+    etfs:
+      - ticker: QQQ
+        name: Invesco QQQ Trust
+        isin: US46090E1038
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.2
+        aum_b: 250.0
+        inception: '1999-03-10'
+        description_en: Nasdaq-100 index — heavy tech exposure, high liquidity
+        description_he: מדד ה-Nasdaq-100, חשיפה גבוהה לטכנולוגיה
+      - ticker: QQQM
+        name: Invesco NASDAQ 100 ETF
+        isin: US46138G7060
+        domicile: US
+        distribution: Distributing
+        ucits: false
+        ter: 0.15
+        aum_b: 20.0
+        inception: '2020-10-13'
+        description_en: Identical to QQQ but lower cost — preferred for long-term hold
+        description_he: זהה ל-QQQ אך בעלות נמוכה יותר — עדיף להחזקה ארוכה
+      - ticker: EQQQ
+        name: Invesco Nasdaq-100 UCITS ETF
+        isin: IE0032077012
+        domicile: IE
+        distribution: Distributing
+        ucits: true
+        ter: 0.3
+        aum_b: 8.0
+        inception: '2002-12-02'
+        description_en: Nasdaq-100 in UCITS Distributing wrapper
+        description_he: מדד ה-Nasdaq-100 בגרסת UCITS מחלקת
+      - ticker: EQAC
+        name: Invesco Nasdaq-100 UCITS ETF (Acc)
+        isin: IE00BFZXGZ54
+        domicile: IE
+        distribution: Accumulating
+        ucits: true
+        ter: 0.3
+        aum_b: 2.0
+        inception: '2018-09-24'
+        description_en: Nasdaq-100 in UCITS Accumulating wrapper — tax efficient for IL
+        description_he: מדד ה-Nasdaq-100 בגרסת UCITS צובחת (Acc)
 blacklist:
   leveraged:
     reason: Leveraged ETFs experience decay and are unsuitable for long-term holding

@@ -18,11 +18,13 @@ logger = get_logger(__name__)
 
 # ── CRUD ─────────────────────────────────────────────────────────────────────
 
-async def create_bucket(payload: BucketCreate, db: AsyncSession) -> GoalBucket:
+async def create_bucket(payload: BucketCreate, db: AsyncSession, user_id: int | None = None) -> GoalBucket:
     now = datetime.now(timezone.utc)
     bucket = GoalBucket(
+        user_id=user_id,
         name=payload.name,
         horizon_type=payload.horizon_type,
+        initial_investment=payload.initial_investment,
         target_amount=payload.target_amount,
         target_currency=payload.target_currency,
         target_date=payload.target_date,
@@ -45,6 +47,14 @@ async def get_bucket(bucket_id: int, db: AsyncSession) -> GoalBucket:
     return bucket
 
 
+async def get_user_bucket(bucket_id: int, user_id: int, db: AsyncSession) -> GoalBucket:
+    """Get bucket and verify ownership. Returns 404 for missing or foreign bucket."""
+    bucket = await db.get(GoalBucket, bucket_id)
+    if bucket is None or (bucket.user_id is not None and bucket.user_id != user_id):
+        raise NotFoundError("bucket", bucket_id)
+    return bucket
+
+
 async def get_active_bucket(bucket_id: int, db: AsyncSession) -> GoalBucket:
     bucket = await get_bucket(bucket_id, db)
     if bucket.is_archived:
@@ -53,9 +63,11 @@ async def get_active_bucket(bucket_id: int, db: AsyncSession) -> GoalBucket:
 
 
 async def list_buckets(
-    db: AsyncSession, include_archived: bool = False
+    db: AsyncSession, include_archived: bool = False, user_id: int | None = None
 ) -> list[GoalBucket]:
     q = select(GoalBucket)
+    if user_id is not None:
+        q = q.where(GoalBucket.user_id == user_id)
     if not include_archived:
         q = q.where(GoalBucket.is_archived == False)  # noqa: E712
     q = q.order_by(GoalBucket.created_at.asc())
@@ -69,6 +81,8 @@ async def update_bucket(
     bucket = await get_active_bucket(bucket_id, db)
     if payload.name is not None:
         bucket.name = payload.name
+    if payload.initial_investment is not None:
+        bucket.initial_investment = payload.initial_investment
     if payload.target_amount is not None:
         bucket.target_amount = payload.target_amount
     if payload.target_currency is not None:
@@ -84,11 +98,19 @@ async def update_bucket(
 
 
 async def archive_bucket(bucket_id: int, db: AsyncSession) -> None:
-    bucket = await get_bucket(bucket_id, db)  # allow archiving already-archived? No — idempotent
+    bucket = await get_bucket(bucket_id, db)
     bucket.is_archived = True
     bucket.updated_at = datetime.now(timezone.utc)
     await db.flush()
     logger.info("bucket_archived", id=bucket_id)
+
+
+async def delete_bucket(bucket_id: int, db: AsyncSession) -> None:
+    bucket = await get_bucket(bucket_id, db)
+    # Holdings and prices have ON DELETE CASCADE or need manual cleanup
+    await db.delete(bucket)
+    await db.flush()
+    logger.info("bucket_deleted", id=bucket_id)
 
 
 # ── Holdings with drift ───────────────────────────────────────────────────────

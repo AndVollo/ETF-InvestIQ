@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv add *)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(.venv/bin/python -c \"from app.main import app; print\\('Backend imports OK'\\)\")",
+      "Bash(.venv/bin/alembic upgrade *)",
+      "Bash(.venv/bin/python -m py_compile app/routes/auth.py app/services/auth_service.py app/services/email_service.py app/core/security.py app/db/models/user.py app/db/models/password_reset.py)",
+      "Bash(xargs cat *)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"full_name\":\"Test User\",\"password\":\"test1234\"}')",
+      "Bash(curl -s http://127.0.0.1:8000/ping)",
+      "Bash(curl -s http://127.0.0.1:8000/api/docs)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); paths=[p for p in d['paths'] if 'auth' in p]; print\\(paths\\)\")",
+      "Bash(curl -s http://127.0.0.1:8000/api/openapi.json)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); paths=[p for p in d.get\\('paths',{}\\) if 'auth' in p]; print\\(paths\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\('paths',{}\\).keys\\(\\)\\)[:10]\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k: d.get\\(k\\) for k in ['build','bundle','app']}, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(kill 88132)",
+      "Bash(.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(.venv/bin/python -c \"import bcrypt; print\\(bcrypt.__version__\\)\")",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"password\":\"test1234\"}')",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"new@test.com\",\"full_name\":\"New User\",\"password\":\"pass1234\"}')",
+      "Bash(curl -s -X POST http://localhost:5173/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"viaproxy@test.com\",\"full_name\":\"Proxy Test\",\"password\":\"pass1234\"}')",
+      "Bash(.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000)",
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"realuser@test.com\",\"full_name\":\"Real User\",\"password\":\"pass1234\"}')",
+      "Bash(curl -s http://127.0.0.1:8000/api/v1/auth/signup -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"check@test.com\",\"full_name\":\"Check\",\"password\":\"pass1234\"}')"
+    ]
+  }
+}

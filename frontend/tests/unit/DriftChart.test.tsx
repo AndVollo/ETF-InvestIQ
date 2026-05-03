@@ -7,16 +7,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }))
 
-vi.mock('recharts', () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => <div data-testid="bar-chart">{children}</div>,
-  Bar: () => null,
-  XAxis: () => null,
-  YAxis: () => null,
-  CartesianGrid: () => null,
-  Tooltip: () => null,
-  ReferenceLine: () => null,
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  Cell: () => null,
+vi.mock('@/store/uiStore', () => ({
+  useUiStore: (selector: (s: { driftVariant: 'diverging' | 'tick' | 'stacked'; showValuation: boolean }) => unknown) =>
+    selector({ driftVariant: 'diverging', showValuation: true }),
 }))
 
 const makeHolding = (ticker: string, current_pct: number, target_pct: number): HoldingDriftItem => ({
@@ -38,9 +31,11 @@ describe('DriftChart', () => {
     expect(getByText('buckets.no_holdings')).toBeInTheDocument()
   })
 
-  it('renders bar chart when holdings provided', () => {
+  it('renders a row per holding when holdings provided', () => {
     const holdings = [makeHolding('VTI', 62, 60), makeHolding('BND', 38, 40)]
-    const { getByTestId } = render(<DriftChart holdings={holdings} />)
-    expect(getByTestId('bar-chart')).toBeInTheDocument()
+    const { container, getByText } = render(<DriftChart holdings={holdings} />)
+    expect(container.querySelectorAll('.drift-row')).toHaveLength(2)
+    expect(getByText('VTI')).toBeInTheDocument()
+    expect(getByText('BND')).toBeInTheDocument()
   })
 })

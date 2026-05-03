@@ -12,7 +12,8 @@ from app.config import settings
 from app.core.exceptions import AppError, app_error_handler, generic_error_handler
 from app.core.logging import configure_logging, get_logger
 from app.db.session import engine
-from app.db.base import Base
+
+from app.routes.auth import router as auth_router
 from app.routes.app_settings import router as settings_router
 from app.routes.architect import router as architect_router
 from app.routes.buckets import router as buckets_router
@@ -42,22 +43,20 @@ def _run_migrations() -> None:
     # Override the relative script_location with the absolute bundled path.
     cfg.set_main_option("script_location", str(base / "alembic"))
     cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
-    command.upgrade(cfg, "head")
+    
+    try:
+        command.upgrade(cfg, "head")
+    except Exception as exc:
+        logger.error("alembic_upgrade_failed", error=str(exc))
+        sys.exit(1)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging(debug=settings.debug)
     logger.info("startup", version=settings.app_version, db_path=str(settings.db_path))
-
-    if getattr(sys, "frozen", False):
-        _run_migrations()
-    else:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
+    _run_migrations()
     yield
-
     await engine.dispose()
     logger.info("shutdown")
 
@@ -82,30 +81,20 @@ app.add_middleware(
 app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, generic_error_handler)  # type: ignore[arg-type]
 
-# Sprint 1
+# Routes
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
-# Sprint 2
 app.include_router(universe_router, prefix="/api/v1")
 app.include_router(valuation_router, prefix="/api/v1")
-# Sprint 3
 app.include_router(buckets_router, prefix="/api/v1")
 app.include_router(holdings_router, prefix="/api/v1")
 app.include_router(deposits_router, prefix="/api/v1")
-# Sprint 4
 app.include_router(sectors_router, prefix="/api/v1")
 app.include_router(drawdown_router, prefix="/api/v1")
 app.include_router(architect_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
-# Sprint 7
 app.include_router(dividends_router, prefix="/api/v1")
 
-
-if __name__ == "__main__":
-    # Entrypoint for the PyInstaller-bundled Tauri sidecar.
-    # The Tauri shell spawns this binary on app launch.
-    import os
-
-    import uvicorn
-
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+@app.get("/ping")
+async def ping():
+    return {"status": "ok"}

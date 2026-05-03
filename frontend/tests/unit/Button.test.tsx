@@ -22,11 +22,11 @@ describe('Button', () => {
 
   it('shows spinner when loading', () => {
     const { container } = render(<Button loading>Save</Button>)
-    expect(container.querySelector('.animate-spin')).toBeTruthy()
+    expect(container.querySelector('.spinner')).toBeTruthy()
   })
 
-  it('applies danger variant classes', () => {
+  it('applies danger variant class', () => {
     const { getByRole } = render(<Button variant="danger">Delete</Button>)
-    expect(getByRole('button').className).toContain('bg-danger')
+    expect(getByRole('button').className).toContain('btn--danger')
   })
 })

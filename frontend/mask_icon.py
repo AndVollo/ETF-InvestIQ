@@ -14,7 +14,7 @@ def create_squircle_mask(size, border_radius):
     return mask
 
 def main():
-    input_path = "/Users/andreyvolovich/.gemini/antigravity/brain/6a6bc641-7515-4d51-8a29-680394df0019/ultra_simple_solid_iq_1777708137658.png"
+    input_path = "/Users/andreyvolovich/.gemini/antigravity/brain/6a6bc641-7515-4d51-8a29-680394df0019/large_linear_style_iq_icon_1777807056430.png"
     output_path = "./src-tauri/assets/source-icon.png"
     
     # Open the image and ensure it's RGBA

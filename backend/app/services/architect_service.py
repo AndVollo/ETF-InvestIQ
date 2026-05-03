@@ -188,12 +188,16 @@ def _universe_summary() -> str:
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
-async def _get_session(session_id: int, db: AsyncSession) -> ArchitectSession:
+async def _get_session(
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> ArchitectSession:
     result = await db.execute(
         select(ArchitectSession).where(ArchitectSession.id == session_id)
     )
     s = result.scalar_one_or_none()
     if s is None:
+        raise NotFoundError("architect_session", session_id)
+    if user_id is not None and s.user_id is not None and s.user_id != user_id:
         raise NotFoundError("architect_session", session_id)
     return s
 
@@ -219,6 +223,7 @@ async def start_session(
     bucket_id: int,
     profile: InvestorProfile,
     db: AsyncSession,
+    user_id: int | None = None,
 ) -> ArchitectStartResponse:
     from app.services.bucket_service import get_active_bucket
 
@@ -228,6 +233,7 @@ async def start_session(
 
     now = datetime.now(timezone.utc)
     session = ArchitectSession(
+        user_id=user_id,
         bucket_id=bucket_id,
         status="DRAFT",
         selected_buckets_json=json.dumps({"horizon_type": bucket.horizon_type}),
@@ -258,8 +264,9 @@ async def ingest_candidates(
     session_id: int,
     tickers: list[str],
     db: AsyncSession,
+    user_id: int | None = None,
 ) -> CandidateIngestResponse:
-    session = await _get_session(session_id, db)
+    session = await _get_session(session_id, db, user_id=user_id)
     if session.status not in ("DRAFT",):
         raise ValidationError("error.architect_session_wrong_status", {"status": session.status, "expected": "DRAFT"})
 
@@ -327,8 +334,10 @@ async def ingest_candidates(
     )
 
 
-async def get_engineer_prompt(session_id: int, db: AsyncSession) -> EngineerPromptResponse:
-    session = await _get_session(session_id, db)
+async def get_engineer_prompt(
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> EngineerPromptResponse:
+    session = await _get_session(session_id, db, user_id=user_id)
     if not session.shortlist_json:
         raise ValidationError("error.architect_no_shortlist", {"session_id": session_id})
 
@@ -393,8 +402,9 @@ async def ingest_allocation(
     allocation: list[AllocationItem],
     rationale: str,
     db: AsyncSession,
+    user_id: int | None = None,
 ) -> AllocationIngestResponse:
-    session = await _get_session(session_id, db)
+    session = await _get_session(session_id, db, user_id=user_id)
     if not session.shortlist_json:
         raise ValidationError("error.architect_no_shortlist", {"session_id": session_id})
 
@@ -479,6 +489,7 @@ async def ingest_allocation(
 async def review_drawdown(
     session_id: int,
     db: AsyncSession,
+    user_id: int | None = None,
 ):
     """Run a drawdown simulation against the session's proposed allocation
     and mark it as reviewed. Required before confirm_session() will succeed.
@@ -487,7 +498,7 @@ async def review_drawdown(
     """
     from app.services import drawdown_service
 
-    session = await _get_session(session_id, db)
+    session = await _get_session(session_id, db, user_id=user_id)
     if not session.final_allocation_json:
         raise ValidationError("error.architect_no_allocation", {"session_id": session_id})
     if session.bucket_id is None:
@@ -515,8 +526,10 @@ async def review_drawdown(
     return result
 
 
-async def confirm_session(session_id: int, db: AsyncSession) -> ArchitectConfirmResponse:
-    session = await _get_session(session_id, db)
+async def confirm_session(
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> ArchitectConfirmResponse:
+    session = await _get_session(session_id, db, user_id=user_id)
     if session.status not in ("DRAFT", "PENDING_REVIEW"):
         raise ValidationError("error.architect_session_wrong_status", {
             "status": session.status, "expected": "DRAFT or PENDING_REVIEW"
@@ -607,8 +620,10 @@ async def confirm_session(session_id: int, db: AsyncSession) -> ArchitectConfirm
     )
 
 
-async def get_session(session_id: int, db: AsyncSession) -> ArchitectSessionResponse:
-    session = await _get_session(session_id, db)
+async def get_session(
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> ArchitectSessionResponse:
+    session = await _get_session(session_id, db, user_id=user_id)
     shortlist = (
         [CandidateDetail(**c) for c in json.loads(session.shortlist_json)]
         if session.shortlist_json else None

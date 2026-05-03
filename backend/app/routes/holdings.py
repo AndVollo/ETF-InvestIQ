@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logging import get_logger
 from app.db.models.holding import Holding
+from app.db.models.user import User
 from app.db.session import get_db
+from app.dependencies import get_current_user
 from app.schemas.holding import HoldingCreate, HoldingResponse, HoldingUpdate
 from app.services import bucket_service
 from app.services.universe_service import get_universe_tickers, is_blacklisted
@@ -24,7 +26,9 @@ async def list_holdings(
     bucket_id: int,
     include_archived: bool = False,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[HoldingResponse]:
+    await bucket_service.get_user_bucket(bucket_id, current_user.id, db)
     q = select(Holding).where(Holding.bucket_id == bucket_id)
     if not include_archived:
         q = q.where(Holding.is_archived == False)  # noqa: E712
@@ -38,13 +42,11 @@ async def list_holdings(
 async def create_holding(
     payload: HoldingCreate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> HoldingResponse:
-    # Bucket must exist and be active
-    await bucket_service.get_active_bucket(payload.bucket_id, db)
+    await bucket_service.get_user_bucket(payload.bucket_id, current_user.id, db)
 
     ticker = payload.ticker
-
-    # Universe + blacklist check
     blacklisted, reason = is_blacklisted(ticker)
     if blacklisted:
         from app.core.exceptions import BlacklistedTickerError
@@ -55,7 +57,6 @@ async def create_holding(
         from app.core.exceptions import UniverseTickerError
         raise UniverseTickerError(ticker)
 
-    # Upsert: if archived holding exists, unarchive it
     existing_result = await db.execute(
         select(Holding).where(
             Holding.bucket_id == payload.bucket_id,
@@ -69,7 +70,6 @@ async def create_holding(
     if existing is not None:
         if not existing.is_archived:
             raise ValidationError("error.holding_already_exists", {"ticker": ticker})
-        # Reactivate
         existing.is_archived = False
         existing.units = payload.units
         existing.avg_cost_usd = payload.avg_cost_usd
@@ -103,6 +103,7 @@ async def update_holding(
     holding_id: int,
     payload: HoldingUpdate,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> HoldingResponse:
     result = await db.execute(
         select(Holding).where(Holding.id == holding_id, Holding.is_archived == False)  # noqa: E712
@@ -110,6 +111,7 @@ async def update_holding(
     holding = result.scalar_one_or_none()
     if holding is None:
         raise NotFoundError("holding", holding_id)
+    await bucket_service.get_user_bucket(holding.bucket_id, current_user.id, db)
 
     if payload.units is not None:
         holding.units = payload.units
@@ -130,13 +132,13 @@ async def update_holding(
 async def archive_holding(
     holding_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> None:
-    result = await db.execute(
-        select(Holding).where(Holding.id == holding_id)
-    )
+    result = await db.execute(select(Holding).where(Holding.id == holding_id))
     holding = result.scalar_one_or_none()
     if holding is None:
         raise NotFoundError("holding", holding_id)
+    await bucket_service.get_user_bucket(holding.bucket_id, current_user.id, db)
 
     holding.is_archived = True
     holding.updated_at = datetime.now(timezone.utc)

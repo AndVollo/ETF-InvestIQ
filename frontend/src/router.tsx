@@ -9,11 +9,20 @@ import UniverseBrowser from './pages/UniverseBrowser'
 import Architect from './pages/Architect'
 import AuditTrail from './pages/AuditTrail'
 import Settings from './pages/Settings'
+import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/SignupPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import { RequireAuth } from './components/common/RequireAuth'
 
 export const router = createBrowserRouter([
+  { path: '/login', element: <LoginPage /> },
+  { path: '/signup', element: <SignupPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   {
     path: '/',
-    element: <App />,
+    element: <RequireAuth><App /></RequireAuth>,
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'buckets', element: <BucketsPage /> },

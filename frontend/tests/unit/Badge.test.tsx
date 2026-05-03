@@ -8,18 +8,18 @@ describe('Badge', () => {
     expect(getByText('Active')).toBeInTheDocument()
   })
 
-  it('applies green color classes', () => {
+  it('applies green (success) variant class', () => {
     const { container } = render(<Badge color="green">OK</Badge>)
-    expect(container.firstChild).toHaveClass('bg-green-100')
+    expect(container.firstChild).toHaveClass('badge--success')
   })
 
-  it('applies red color classes', () => {
+  it('applies red (danger) variant class', () => {
     const { container } = render(<Badge color="red">Error</Badge>)
-    expect(container.firstChild).toHaveClass('bg-red-100')
+    expect(container.firstChild).toHaveClass('badge--danger')
   })
 
-  it('defaults to gray', () => {
+  it('defaults to muted variant', () => {
     const { container } = render(<Badge>Neutral</Badge>)
-    expect(container.firstChild).toHaveClass('bg-gray-100')
+    expect(container.firstChild).toHaveClass('badge--muted')
   })
 })

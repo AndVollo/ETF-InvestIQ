@@ -12,6 +12,9 @@ class ArchitectSession(Base, TimestampMixin):
     __tablename__ = "architect_sessions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
+    )
     bucket_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("goal_buckets.id"), nullable=True
     )
@@ -29,6 +32,9 @@ class ArchitectSession(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    user: Mapped["User | None"] = relationship(  # type: ignore[name-defined]
+        "User", back_populates="architect_sessions"
+    )
     bucket: Mapped["GoalBucket | None"] = relationship(  # type: ignore[name-defined]
         "GoalBucket", back_populates="architect_sessions"
     )

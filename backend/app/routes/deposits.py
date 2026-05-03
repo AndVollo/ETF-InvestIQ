@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.deposit_log import DepositLog
+from app.db.models.user import User
 from app.db.session import get_db
+from app.dependencies import get_current_user
 from app.schemas.deposit import (
     DepositCalculateRequest,
     DepositConfirmRequest,
@@ -11,10 +16,7 @@ from app.schemas.deposit import (
     DepositLogResponse,
     DepositPlan,
 )
-from app.services import smart_deposit_service
-from app.db.models.deposit_log import DepositLog
-
-import json
+from app.services import bucket_service, smart_deposit_service
 
 router = APIRouter(prefix="/deposits", tags=["deposits"])
 
@@ -23,7 +25,9 @@ router = APIRouter(prefix="/deposits", tags=["deposits"])
 async def calculate_deposit(
     payload: DepositCalculateRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DepositPlan:
+    await bucket_service.get_user_bucket(payload.bucket_id, current_user.id, db)
     return await smart_deposit_service.calculate_deposit(
         bucket_id=payload.bucket_id,
         amount=payload.amount,
@@ -36,8 +40,10 @@ async def calculate_deposit(
 async def confirm_deposit(
     payload: DepositConfirmRequest,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DepositConfirmResponse:
     log: DepositLog = await smart_deposit_service.confirm_deposit(payload.plan_token, db)
+    await bucket_service.get_user_bucket(log.bucket_id, current_user.id, db)
     orders = json.loads(log.orders_json)
     return DepositConfirmResponse(
         deposit_id=log.id,
@@ -52,8 +58,10 @@ async def confirm_deposit(
 async def deposit_history(
     bucket_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[DepositLogResponse]:
     from app.schemas.deposit import OrderItem
+    await bucket_service.get_user_bucket(bucket_id, current_user.id, db)
     logs = await smart_deposit_service.get_deposit_history(bucket_id, db)
     result = []
     for log in logs:

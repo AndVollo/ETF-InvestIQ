@@ -11,19 +11,28 @@ import {
   useConfirmArchitectSession,
 } from '@/api/architect'
 import type { AllocationItem, DrawdownSimulationResponse, UcitsAdvisory } from '@/types/api'
-import { Button } from '@/components/common/Button'
-import { Input } from '@/components/common/Input'
-import { Badge } from '@/components/common/Badge'
+import {
+  Card,
+  Button,
+  Badge,
+  Field,
+  Input,
+  Select,
+  Textarea,
+  Stepper,
+  Icon,
+} from '@/components/design'
 import { Toast } from '@/components/common/Toast'
+import { formatCurrency } from '@/utils/formatting'
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6
+type Step = 0 | 1 | 2 | 3 | 4 | 5
 
 export default function Architect() {
   const { t } = useTranslation()
   const { data: bucketsData } = useBuckets()
   const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
 
-  const [step, setStep] = useState<Step>(1)
+  const [step, setStep] = useState<Step>(0)
   const [bucketId, setBucketId] = useState<number>(buckets[0]?.id ?? 0)
   const [sessionId, setSessionId] = useState<number>(0)
   const [goalDesc, setGoalDesc] = useState('')
@@ -46,14 +55,14 @@ export default function Architect() {
   const reviewDrawdown = useReviewDrawdown(sessionId)
   const confirmSession = useConfirmArchitectSession(sessionId)
 
-  const STEP_TITLES: Record<Step, string> = {
-    1: t('architect.step1_title'),
-    2: t('architect.step2_title'),
-    3: t('architect.step3_title'),
-    4: t('architect.step4_title'),
-    5: t('architect.step5_title'),
-    6: t('architect.step6_title'),
-  }
+  const STEPS = [
+    { label: t('architect.step1_title') },
+    { label: t('architect.step2_title') },
+    { label: t('architect.step3_title') },
+    { label: t('architect.step4_title') },
+    { label: t('architect.step5_title') },
+    { label: t('architect.step6_title') },
+  ]
 
   const handleStart = async () => {
     const res = await startSession.mutateAsync({
@@ -65,13 +74,13 @@ export default function Architect() {
       },
     })
     setSessionId(res.session_id)
-    setStep(2)
+    setStep(1)
   }
 
   const handleIngestCandidates = async () => {
     const tickers = tickersInput.split(/[\s,]+/).filter(Boolean).map((tk) => tk.toUpperCase())
     await ingestCandidates.mutateAsync(tickers)
-    setStep(3)
+    setStep(2)
   }
 
   const handleIngestAllocation = async () => {
@@ -89,18 +98,18 @@ export default function Architect() {
     setUcitsAdvisory(res.ucits_advisory)
     setUcitsDismissed(false)
     setShowAllUcits(false)
-    setDrawdownReport(null)  // new allocation invalidates prior drawdown review
+    setDrawdownReport(null)
     if (res.status === 'PENDING_REVIEW') {
       setToast({ msg: t('architect.cooling_off', { time: res.cooling_off_until ?? '' }), type: 'error' })
     } else {
-      setStep(5)
+      setStep(4)
     }
   }
 
   const handleReviewDrawdown = async () => {
     const res = await reviewDrawdown.mutateAsync()
     setDrawdownReport(res)
-    setStep(6)
+    setStep(5)
   }
 
   const handleConfirm = async () => {
@@ -109,241 +118,297 @@ export default function Architect() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('architect.title')}</h1>
-
-      <div className="flex items-center gap-2 mb-8">
-        {([1, 2, 3, 4, 5] as Step[]).map((s) => (
-          <div
-            key={s}
-            className={`flex-1 h-1.5 rounded-full ${s <= step ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-700'}`}
-          />
-        ))}
-      </div>
-
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">{STEP_TITLES[step]}</h2>
-
-      {step === 1 && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('buckets.title')}</label>
-            <select
-              className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800"
-              value={bucketId}
-              onChange={(e) => setBucketId(Number(e.target.value))}
-            >
-              {buckets.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
-          <Input id="goal-desc" label={t('architect.goal_desc')} value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
-          <Input
-            id="target-amount"
-            label={t('architect.target_amount_ils')}
-            type="number"
-            value={targetAmount ?? ''}
-            onChange={(e) => setTargetAmount(e.target.value ? Number(e.target.value) : undefined)}
-          />
-          <Input
-            id="monthly-deposit"
-            label={t('architect.monthly_deposit_ils')}
-            type="number"
-            value={monthlyDeposit ?? ''}
-            onChange={(e) => setMonthlyDeposit(e.target.value ? Number(e.target.value) : undefined)}
-          />
-          <Button onClick={handleStart} loading={startSession.isPending}>{t('architect.start')}</Button>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="flex flex-col gap-4">
-          <Input
-            id="tickers-input"
-            label="Tickers"
-            placeholder={t('architect.tickers_placeholder')}
-            value={tickersInput}
-            onChange={(e) => setTickersInput(e.target.value)}
-          />
-          <Button onClick={handleIngestCandidates} loading={ingestCandidates.isPending}>
-            {t('architect.ingest')}
-          </Button>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="flex flex-col gap-4">
-          {session?.shortlist && (
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="font-semibold text-success mb-2">{t('architect.accepted')}</p>
-                {session.shortlist.filter((c) => c.is_valid).map((c) => (
-                  <div key={c.ticker} className="flex items-center gap-2 mb-1">
-                    <span className="font-mono">{c.ticker}</span>
-                    {c.composite_score != null && <Badge color="green">{c.composite_score.toFixed(1)}</Badge>}
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <Stepper steps={STEPS} current={step} />
+      <div className="content">
+        <div className="content__inner">
+          {step === 0 && (
+            <Card>
+              <Card.Header title={t('architect.step1_title')} subtitle={t('architect.title')} />
+              <Card.Body>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <Field label={t('buckets.title')}>
+                    <Select value={bucketId} onChange={(e) => setBucketId(Number(e.target.value))}>
+                      {buckets.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </Select>
+                  </Field>
+                  <Field label={t('architect.goal_desc')}>
+                    <Input value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
+                  </Field>
+                  <Field label={t('architect.target_amount_ils')}>
+                    <Input
+                      type="number"
+                      value={targetAmount ?? ''}
+                      onChange={(e) => setTargetAmount(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </Field>
+                  <Field label={t('architect.monthly_deposit_ils')}>
+                    <Input
+                      type="number"
+                      value={monthlyDeposit ?? ''}
+                      onChange={(e) => setMonthlyDeposit(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </Field>
+                  <div>
+                    <Button onClick={handleStart} loading={startSession.isPending}>
+                      {t('architect.start')}
+                    </Button>
                   </div>
-                ))}
-              </div>
-              <div>
-                <p className="font-semibold text-danger mb-2">{t('architect.rejected')}</p>
-                {session.shortlist.filter((c) => !c.is_valid).map((c) => (
-                  <div key={c.ticker} className="flex items-center gap-2 mb-1">
-                    <span className="font-mono">{c.ticker}</span>
-                    {c.rejection_reason && <Badge color="red">{c.rejection_reason}</Badge>}
-                  </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              </Card.Body>
+            </Card>
           )}
 
-          {engineerPrompt && (
-            <div>
-              <p className="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Engineer Prompt</p>
-              <pre className="text-xs bg-gray-50 dark:bg-gray-900 rounded p-3 overflow-auto max-h-48 whitespace-pre-wrap">
-                {engineerPrompt.engineer_prompt}
-              </pre>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="mt-2"
-                onClick={() => { void navigator.clipboard.writeText(engineerPrompt.engineer_prompt) }}
-              >
-                {t('architect.copy_prompt')}
-              </Button>
-            </div>
+          {step === 1 && (
+            <Card>
+              <Card.Header title={t('architect.step2_title')} />
+              <Card.Body>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <Field label="Tickers">
+                    <Input
+                      placeholder={t('architect.tickers_placeholder')}
+                      value={tickersInput}
+                      onChange={(e) => setTickersInput(e.target.value)}
+                    />
+                  </Field>
+                  <div>
+                    <Button onClick={handleIngestCandidates} loading={ingestCandidates.isPending}>
+                      {t('architect.ingest')}
+                    </Button>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
           )}
 
-          <Button onClick={() => setStep(4)}>{t('common.next')}</Button>
-        </div>
-      )}
-
-      {step === 4 && (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('architect.paste_json')}</label>
-            <textarea
-              className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-800 font-mono h-48"
-              value={allocationJson}
-              onChange={(e) => setAllocationJson(e.target.value)}
-              placeholder='{"allocation":[{"ticker":"VTI","weight_pct":60}],"rationale":"..."}'
-            />
-          </div>
-          <Input
-            label={t('architect.rationale')}
-            value={rationale}
-            onChange={(e) => setRationale(e.target.value)}
-          />
-          <Button onClick={handleIngestAllocation} loading={ingestAllocation.isPending}>
-            {t('architect.ingest')}
-          </Button>
-        </div>
-      )}
-
-      {step === 5 && (
-        <div className="flex flex-col gap-4">
-          {ucitsAdvisory && !ucitsDismissed && (
-            <div
-              role="region"
-              aria-label="UCITS advisory"
-              className="rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950 p-4"
-            >
-              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200 mb-1">
-                ℹ️ {t('architect.ucits_advisory_title')}
-              </p>
-              <p className="text-sm text-emerald-900 dark:text-emerald-100 mb-3">
-                {t('architect.ucits_advisory_body', { us_pct: ucitsAdvisory.params.us_pct })}
-              </p>
-              <ul className="text-sm text-emerald-900 dark:text-emerald-100 space-y-1 mb-3">
-                {Object.entries(ucitsAdvisory.params.suggestions)
-                  .slice(0, showAllUcits ? undefined : 3)
-                  .map(([usTicker, alts]) => (
-                    <li key={usTicker} className="font-mono">
-                      • {usTicker} → {alts.join(' / ')}
-                    </li>
-                  ))}
-              </ul>
-              <p className="text-xs text-emerald-700 dark:text-emerald-300 mb-3">
-                {t('architect.ucits_disclaimer')}
-              </p>
-              <div className="flex gap-2">
-                {!showAllUcits && Object.keys(ucitsAdvisory.params.suggestions).length > 3 && (
-                  <button
-                    onClick={() => setShowAllUcits(true)}
-                    className="text-xs px-3 py-1 rounded border border-emerald-400 text-emerald-700 dark:text-emerald-200 dark:border-emerald-600"
-                  >
-                    {t('architect.ucits_show_all')}
-                  </button>
+          {step === 2 && (
+            <Card>
+              <Card.Header title={t('architect.step3_title')} />
+              <Card.Body>
+                {session?.shortlist && (
+                  <div className="grid-2" style={{ marginBottom: 14 }}>
+                    <div>
+                      <div className="section-title">{t('architect.accepted')}</div>
+                      {session.shortlist.filter((c) => c.is_valid).map((c) => (
+                        <div key={c.ticker} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                          <span className="mono" style={{ fontSize: 13 }}>{c.ticker}</span>
+                          {c.composite_score != null && (
+                            <Badge variant="success">{c.composite_score.toFixed(1)}</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div className="section-title">{t('architect.rejected')}</div>
+                      {session.shortlist.filter((c) => !c.is_valid).map((c) => (
+                        <div key={c.ticker} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                          <span className="mono" style={{ fontSize: 13 }}>{c.ticker}</span>
+                          {c.rejection_reason && (
+                            <Badge variant="danger">{c.rejection_reason}</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
-                <button
-                  onClick={() => setUcitsDismissed(true)}
-                  className="text-xs px-3 py-1 rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300"
-                >
-                  {t('architect.ucits_dismiss')}
-                </button>
-              </div>
-            </div>
+
+                {engineerPrompt && (
+                  <div>
+                    <div className="section-title">Engineer Prompt</div>
+                    <pre
+                      style={{
+                        fontSize: 11,
+                        background: 'var(--bg-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: 12,
+                        overflow: 'auto',
+                        maxHeight: 200,
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      {engineerPrompt.engineer_prompt}
+                    </pre>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      style={{ marginTop: 8 }}
+                      onClick={() => { void navigator.clipboard.writeText(engineerPrompt.engineer_prompt) }}
+                    >
+                      {t('architect.copy_prompt')}
+                    </Button>
+                  </div>
+                )}
+              </Card.Body>
+            </Card>
           )}
 
-          {session?.final_allocation?.map((a) => (
-            <div key={a.ticker} className="flex justify-between text-sm py-1.5 border-b border-gray-100 dark:border-gray-700">
-              <span className="font-mono">{a.ticker}</span>
-              <span>{a.weight_pct}%</span>
-            </div>
-          ))}
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t('architect.drawdown_review_hint')}
-          </p>
-          <Button onClick={handleReviewDrawdown} loading={reviewDrawdown.isPending}>
-            {t('architect.review_drawdown')}
-          </Button>
-        </div>
-      )}
+          {step === 3 && (
+            <Card>
+              <Card.Header title={t('architect.step4_title')} subtitle={t('architect.paste_json')} />
+              <Card.Body>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <Textarea
+                    rows={8}
+                    value={allocationJson}
+                    onChange={(e) => setAllocationJson(e.target.value)}
+                    placeholder='{"allocation":[{"ticker":"VTI","weight_pct":60}],"rationale":"..."}'
+                    style={{ fontFamily: 'var(--font-mono)' }}
+                  />
+                  <Field label={t('architect.rationale')}>
+                    <Input value={rationale} onChange={(e) => setRationale(e.target.value)} />
+                  </Field>
+                  <div>
+                    <Button onClick={handleIngestAllocation} loading={ingestAllocation.isPending}>
+                      {t('architect.ingest')}
+                    </Button>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
 
-      {step === 6 && (
-        <div className="flex flex-col gap-4">
-          <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 p-4">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-100 mb-2">
-              ⚠️ {t('architect.drawdown_report_title')}
-            </p>
-            {drawdownReport && (
-              <>
-                <p className="text-sm text-amber-900 dark:text-amber-100 mb-3">
-                  {t('architect.drawdown_report_worst', {
-                    pct: drawdownReport.worst_case_pct?.toFixed(1) ?? '—',
-                    amount: drawdownReport.worst_case_amount_usd?.toFixed(0) ?? '—',
-                  })}
-                </p>
-                <table className="w-full text-xs text-amber-900 dark:text-amber-100">
-                  <thead>
-                    <tr className="border-b border-amber-300 dark:border-amber-700">
-                      <th className="text-start py-1">{t('architect.drawdown_scenario')}</th>
-                      <th className="text-end py-1">{t('architect.drawdown_loss_pct')}</th>
-                      <th className="text-end py-1">{t('architect.drawdown_loss_usd')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {drawdownReport.scenarios.map((s) => (
-                      <tr key={s.name}>
-                        <td className="py-1">{s.name}</td>
-                        <td className="text-end py-1 font-mono">
-                          {s.portfolio_drawdown_pct?.toFixed(1) ?? '—'}%
-                        </td>
-                        <td className="text-end py-1 font-mono">
-                          ${s.portfolio_loss_usd?.toFixed(0) ?? '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
+          {step === 4 && (
+            <>
+              {ucitsAdvisory && !ucitsDismissed && (
+                <Card style={{ borderColor: 'var(--success)' }}>
+                  <Card.Body>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div
+                        style={{
+                          width: 28, height: 28, borderRadius: 6,
+                          background: 'var(--success-bg)', color: 'var(--success)',
+                          display: 'grid', placeItems: 'center', flexShrink: 0,
+                        }}
+                      >
+                        <Icon name="info" size={14} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                          {t('architect.ucits_advisory_title')}
+                        </div>
+                        <div style={{ fontSize: 13, marginBottom: 8 }}>
+                          {t('architect.ucits_advisory_body', { us_pct: ucitsAdvisory.params.us_pct })}
+                        </div>
+                        <ul style={{ paddingInlineStart: 16, fontSize: 13, color: 'var(--text-secondary)' }}>
+                          {Object.entries(ucitsAdvisory.params.suggestions)
+                            .slice(0, showAllUcits ? undefined : 3)
+                            .map(([usTicker, alts]) => (
+                              <li key={usTicker} className="mono" style={{ padding: '2px 0' }}>
+                                {usTicker} → {alts.join(' / ')}
+                              </li>
+                            ))}
+                        </ul>
+                        <div className="text-muted" style={{ fontSize: 11, marginTop: 8 }}>
+                          {t('architect.ucits_disclaimer')}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          {!showAllUcits &&
+                            Object.keys(ucitsAdvisory.params.suggestions).length > 3 && (
+                              <Button size="sm" variant="secondary" onClick={() => setShowAllUcits(true)}>
+                                {t('architect.ucits_show_all')}
+                              </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => setUcitsDismissed(true)}>
+                            {t('architect.ucits_dismiss')}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              )}
+
+              <Card>
+                <Card.Header title={t('architect.step5_title')} />
+                <Card.Body>
+                  {session?.final_allocation?.map((a) => (
+                    <div
+                      key={a.ticker}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        fontSize: 13,
+                      }}
+                    >
+                      <span className="mono" style={{ fontWeight: 500 }}>{a.ticker}</span>
+                      <span className="tnum">{a.weight_pct}%</span>
+                    </div>
+                  ))}
+                  <div className="hint" style={{ marginTop: 12 }}>
+                    <Icon name="info" size={12} /> {t('architect.drawdown_review_hint')}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <Button onClick={handleReviewDrawdown} loading={reviewDrawdown.isPending}>
+                      <Icon name="drawdown" size={14} /> {t('architect.review_drawdown')}
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </>
+          )}
+
+          {step === 5 && (
+            <>
+              {drawdownReport && (
+                <Card style={{ background: 'var(--warning-bg)', borderColor: 'transparent' }}>
+                  <Card.Body>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
+                      {t('architect.drawdown_report_title')}
+                    </div>
+                    <div style={{ fontSize: 13, marginBottom: 12 }}>
+                      {t('architect.drawdown_report_worst', {
+                        pct: drawdownReport.worst_case_pct?.toFixed(1) ?? '—',
+                        amount: drawdownReport.worst_case_amount_usd?.toFixed(0) ?? '—',
+                      })}
+                    </div>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>{t('architect.drawdown_scenario')}</th>
+                          <th className="num">{t('architect.drawdown_loss_pct')}</th>
+                          <th className="num">{t('architect.drawdown_loss_usd')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {drawdownReport.scenarios.map((s) => (
+                          <tr key={s.name}>
+                            <td>{s.name}</td>
+                            <td className="num tnum">{s.portfolio_drawdown_pct?.toFixed(1) ?? '—'}%</td>
+                            <td className="num tnum">{formatCurrency(Math.abs(s.portfolio_loss_usd ?? 0), 'USD')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Card.Body>
+                </Card>
+              )}
+
+              <Card>
+                <Card.Body>
+                  <div className="hint" style={{ marginBottom: 12 }}>
+                    {t('architect.confirm_acknowledgement')}
+                  </div>
+                  <Button onClick={handleConfirm} loading={confirmSession.isPending}>
+                    <Icon name="check" size={14} /> {t('architect.confirm_session')}
+                  </Button>
+                </Card.Body>
+              </Card>
+            </>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Button variant="secondary" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1) as Step)}>
+              {t('common.back')}
+            </Button>
+            <Button variant="secondary" disabled={step === 5} onClick={() => setStep((s) => Math.min(5, s + 1) as Step)}>
+              {t('common.next')} <Icon name="chevronRight" size={14} />
+            </Button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t('architect.confirm_acknowledgement')}
-          </p>
-          <Button onClick={handleConfirm} loading={confirmSession.isPending}>
-            {t('architect.confirm_session')}
-          </Button>
         </div>
-      )}
+      </div>
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>

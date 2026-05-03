@@ -48,7 +48,7 @@ def main() -> None:
     dist.mkdir(parents=True, exist_ok=True)
 
     PyInstaller.__main__.run([
-        str(here / "app" / "main.py"),
+        str(here / "run_app.py"),
         "--name", name,
         "--onefile",
         "--noconfirm",

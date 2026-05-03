@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useBuckets } from '@/api/buckets'
 import { useDepositHistory } from '@/api/deposits'
 import { useUiStore } from '@/store/uiStore'
-import { Badge } from '@/components/common/Badge'
+import { Card, Badge, Button } from '@/components/design'
 import { EmptyState } from '@/components/common/EmptyState'
 import { formatDate, formatCurrency } from '@/utils/formatting'
 
@@ -12,38 +12,58 @@ export default function AuditTrail() {
   const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
   const activeBucketId = useUiStore((s) => s.activeBucketId)
   const bucketId = activeBucketId ?? buckets[0]?.id ?? 0
+  const activeBucket = buckets.find((b) => b.id === bucketId)
 
   const { data: history } = useDepositHistory(bucketId)
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">{t('audit.title')}</h1>
-
-      {!history || history.length === 0 ? (
-        <EmptyState message={t('audit.no_history')} />
-      ) : (
-        <div className="rounded-xl bg-white dark:bg-gray-800 shadow-sm divide-y divide-gray-100 dark:divide-gray-700">
-          {history.map((entry) => (
-            <div key={entry.id} className="px-6 py-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <Badge color="blue">{t('audit.type_deposit')}</Badge>
-                  <span className="text-sm text-gray-500">{formatDate(entry.created_at)}</span>
-                </div>
-                <span className="font-semibold text-sm">{formatCurrency(entry.amount, 'USD')}</span>
+    <div className="content">
+      <div className="content__inner">
+        <Card>
+          <Card.Body flush>
+            {!history || history.length === 0 ? (
+              <div style={{ padding: 24 }}>
+                <EmptyState message={t('audit.no_history')} />
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {t('audit.orders')}: {entry.orders.length}
-              </p>
-              {entry.obsidian_file_path && (
-                <p className="text-xs text-gray-400 mt-1">
-                  {t('deposit.obsidian_written', { path: entry.obsidian_file_path })}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            ) : (
+              history.map((entry, i) => (
+                <div
+                  key={entry.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '120px 140px 1fr auto',
+                    gap: 16,
+                    padding: '16px 24px',
+                    borderBottom:
+                      i < history.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div className="tnum text-muted" style={{ fontSize: 12 }}>
+                    {formatDate(entry.created_at)}
+                  </div>
+                  <div>
+                    <Badge variant="info">{t('audit.type_deposit')}</Badge>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>
+                      {activeBucket?.name ?? `Portfolio #${entry.bucket_id}`}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>
+                      {formatCurrency(entry.amount, (entry.currency as 'USD' | 'ILS') || 'USD')} · {entry.orders.length} {t('audit.orders')}
+                    </div>
+                  </div>
+                  <div>
+                    {entry.obsidian_file_path ? (
+                      <Button variant="ghost" size="sm">{t('audit.open_obsidian')}</Button>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            )}
+          </Card.Body>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useBuckets, useBucketHoldings, useBucketSummary } from '@/api/buckets'
 import { useBucketSectors } from '@/api/sectors'
 import { useUiStore } from '@/store/uiStore'
@@ -7,72 +8,51 @@ import { DriftChart } from '@/components/charts/DriftChart'
 import { SectorBar } from '@/components/charts/SectorBar'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { EmptyState } from '@/components/common/EmptyState'
-import { Button } from '@/components/common/Button'
-import { ProgressBar } from '@/components/common/ProgressBar'
+import { Card, Button, Badge, ValuationBadge } from '@/components/design'
 import { formatCurrency } from '@/utils/formatting'
 
-function BucketSelector() {
-  const { t } = useTranslation()
-  const { data } = useBuckets()
-  const activeBucketId = useUiStore((s) => s.activeBucketId)
-  const setActiveBucketId = useUiStore((s) => s.setActiveBucketId)
-  const buckets = data ?? []
-
-  if (buckets.length === 0) return null
-
-  return (
-    <div className="flex items-center gap-3 mb-6">
-      <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.select_bucket')}</span>
-      <select
-        className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800"
-        value={activeBucketId ?? ''}
-        onChange={(e) => setActiveBucketId(e.target.value ? Number(e.target.value) : null)}
-      >
-        {buckets.map((b) => (
-          <option key={b.id} value={b.id}>{b.name}</option>
-        ))}
-      </select>
-    </div>
-  )
-}
-
-function SummaryCards({ bucketId }: { bucketId: number }) {
+function KPIStrip({ bucketId }: { bucketId: number }) {
   const { t } = useTranslation()
   const { data, isLoading } = useBucketSummary(bucketId)
 
-  if (isLoading) return <LoadingSpinner className="py-8" />
+  if (isLoading) return null
   if (!data) return null
 
+  const portfolioValue =
+    data.total_value_ils != null
+      ? formatCurrency(data.total_value_ils, 'ILS')
+      : formatCurrency(data.total_value_usd, 'USD')
+  const portfolioSub =
+    data.total_value_ils != null && data.total_value_usd
+      ? `≈ ${formatCurrency(data.total_value_usd, 'USD')}`
+      : ''
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('dashboard.portfolio_value')}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {data.total_value_ils != null
-            ? formatCurrency(data.total_value_ils, 'ILS')
-            : formatCurrency(data.total_value_usd, 'USD')}
-        </p>
+    <Card>
+      <div className="kpi-strip kpi-strip--3">
+        <div className="kpi">
+          <div className="kpi__label">{t('dashboard.portfolio_value')}</div>
+          <div className="kpi__value">{portfolioValue}</div>
+          {portfolioSub ? <div className="kpi__sub">{portfolioSub}</div> : null}
+        </div>
+        <div className="kpi">
+          <div className="kpi__label">{t('dashboard.goal_progress')}</div>
+          <div className="kpi__value">
+            {data.goal_progress_pct != null ? `${data.goal_progress_pct.toFixed(1)}%` : t('common.na')}
+          </div>
+          {data.target_amount != null ? (
+            <div className="kpi__sub">
+              {t('buckets.target_amount')}: {formatCurrency(data.target_amount, data.target_currency as 'USD' | 'ILS')}
+            </div>
+          ) : null}
+        </div>
+        <div className="kpi">
+          <div className="kpi__label">{t('dashboard.target_date')}</div>
+          <div className="kpi__value">{data.target_date ?? t('common.na')}</div>
+          <div className="kpi__sub">{t('dashboard.total_holdings')}: {data.holdings_count}</div>
+        </div>
       </div>
-      <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('dashboard.goal_progress')}</p>
-        {data.goal_progress_pct != null ? (
-          <>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-              {data.goal_progress_pct.toFixed(1)}%
-            </p>
-            <ProgressBar value={data.goal_progress_pct} showLabel={false} />
-          </>
-        ) : (
-          <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('common.na')}</p>
-        )}
-      </div>
-      <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('buckets.target_date')}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          {data.target_date ?? t('common.na')}
-        </p>
-      </div>
-    </div>
+    </Card>
   )
 }
 
@@ -80,60 +60,126 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const { data: bucketsData, isLoading: bucketsLoading } = useBuckets()
   const activeBucketId = useUiStore((s) => s.activeBucketId)
-  const buckets = bucketsData ?? []
-
+  const setActiveBucketId = useUiStore((s) => s.setActiveBucketId)
+  const showValuation = useUiStore((s) => s.showValuation)
+  const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
   const resolvedId = activeBucketId ?? buckets[0]?.id ?? 0
+
+  // Auto-set the first bucket as active if none chosen yet
+  useEffect(() => {
+    if (activeBucketId == null && buckets[0]) {
+      setActiveBucketId(buckets[0].id)
+    }
+  }, [activeBucketId, buckets, setActiveBucketId])
 
   const { data: holdingsData } = useBucketHoldings(resolvedId)
   const { data: sectorsData } = useBucketSectors(resolvedId)
 
-  if (bucketsLoading) return <LoadingSpinner className="py-32" />
+  if (bucketsLoading) return <div className="content"><LoadingSpinner /></div>
 
   if (buckets.length === 0) {
     return (
-      <EmptyState
-        message={t('dashboard.no_buckets')}
-        action={
-          <Link to="/buckets">
-            <Button>{t('dashboard.create_first')}</Button>
-          </Link>
-        }
-      />
+      <div className="content">
+        <div className="content__inner">
+          <Card>
+            <Card.Body>
+              <EmptyState
+                title={t('dashboard.no_buckets')}
+                message={t('dashboard.create_first')}
+                action={
+                  <Link to="/buckets">
+                    <Button>{t('dashboard.create_first')}</Button>
+                  </Link>
+                }
+              />
+            </Card.Body>
+          </Card>
+        </div>
+      </div>
     )
   }
 
+  const holdings = holdingsData?.holdings ?? []
+
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-4">{t('dashboard.title')}</h1>
-      <BucketSelector />
-      {resolvedId > 0 && <SummaryCards bucketId={resolvedId} />}
+    <div className="content">
+      <div className="content__inner">
+        {resolvedId > 0 && <KPIStrip bucketId={resolvedId} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            {t('dashboard.drift_chart_title')}
-          </h2>
-          <DriftChart holdings={holdingsData?.holdings ?? []} />
-        </div>
+        <Card>
+          <Card.Header
+            title={t('dashboard.drift_chart_title')}
+            subtitle={t('dashboard.drift_chart_subtitle')}
+          />
+          <Card.Body>
+            <DriftChart holdings={holdings} />
+          </Card.Body>
+        </Card>
 
-        <div className="rounded-xl bg-white dark:bg-gray-800 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              {t('dashboard.sector_snapshot')}
-            </h2>
-            <Link to="/sectors" className="text-xs text-primary-600 hover:underline">
-              {t('dashboard.view_all_sectors')}
-            </Link>
-          </div>
-          {sectorsData && sectorsData.sector_exposures.length > 0 ? (
-            <SectorBar
-              exposures={sectorsData.sector_exposures.slice(0, 5)}
-              warnings={sectorsData.cap_warnings}
-              compact
+        <div className="grid-3-1">
+          <Card>
+            <Card.Header
+              title={t('dashboard.sector_snapshot')}
+              subtitle={t('dashboard.sector_snapshot_subtitle')}
+              actions={
+                <Link to="/sectors" style={{ fontSize: 12 }}>
+                  {t('dashboard.view_all_sectors')}
+                </Link>
+              }
             />
-          ) : (
-            <p className="text-sm text-gray-400 py-6 text-center">{t('sectors.no_holdings')}</p>
-          )}
+            <Card.Body>
+              {sectorsData && sectorsData.sector_exposures.length > 0 ? (
+                <SectorBar
+                  exposures={sectorsData.sector_exposures.slice(0, 6)}
+                  warnings={sectorsData.cap_warnings}
+                  compact
+                />
+              ) : (
+                <EmptyState message={t('sectors.no_holdings')} />
+              )}
+            </Card.Body>
+          </Card>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {showValuation && holdings.length > 0 ? (
+              <Card>
+                <Card.Header
+                  title={t('dashboard.valuation_title')}
+                  subtitle={t('dashboard.valuation_subtitle')}
+                />
+                <Card.Body>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {holdings.map((h) => {
+                      const cls = (h as unknown as { valuation_classification?: string }).valuation_classification
+                      return (
+                        <div key={h.ticker} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span className="mono" style={{ fontSize: 13, fontWeight: 500 }}>{h.ticker}</span>
+                          <ValuationBadge classification={cls ?? 'FAIR'} />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Card.Body>
+              </Card>
+            ) : null}
+
+            {sectorsData && sectorsData.cap_warnings.length > 0 ? (
+              <Card>
+                <Card.Body>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {sectorsData.cap_warnings.map((w) => (
+                      <div key={w.cap_type} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Badge variant="danger">{t('sectors.breach')}</Badge>
+                        <span style={{ fontSize: 12 }}>
+                          {t(w.message_key as Parameters<typeof t>[0], w.params as Record<string, string | number>)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Card.Body>
+              </Card>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

@@ -4,7 +4,8 @@ import asyncio
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-import yfinance as yf
+
+# import yfinance as yf  # Moved to local imports to speed up startup
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -20,6 +21,7 @@ _DEFAULT_PERIOD_DAYS = 365 * 3 + 30  # 3 years + buffer
 
 def _fetch_history_sync(ticker: str, start: date, end: date) -> list[dict[str, Any]]:
     """Synchronous yfinance call — run in thread pool."""
+    import yfinance as yf
     t = yf.Ticker(ticker)
     df = t.history(start=str(start), end=str(end), interval="1d", auto_adjust=True)
     if df.empty:
@@ -38,6 +40,7 @@ def _fetch_history_sync(ticker: str, start: date, end: date) -> list[dict[str, A
 
 def _fetch_info_sync(ticker: str) -> dict[str, Any]:
     """Fetch ETF sector weights and top holdings — synchronous."""
+    import yfinance as yf
     t = yf.Ticker(ticker)
     sector_weights: dict[str, float] = {}
     top_holdings: list[dict[str, Any]] = []

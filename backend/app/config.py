@@ -82,6 +82,18 @@ class Settings(BaseSettings):
     # Cooling-off
     cooling_off_hours: int = 24
 
+    # JWT
+    jwt_secret: str = "change-me-set-JWT_SECRET-in-dotenv-at-least-32-chars"
+    jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
+
+    # SMTP (for password-reset emails)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_tls: bool = True
+
     @field_validator("universe_file", mode="before")
     @classmethod
     def resolve_universe_path(cls, v: str | Path) -> Path:

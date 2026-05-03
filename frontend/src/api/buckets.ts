@@ -49,7 +49,15 @@ export const useUpdateBucket = (bucketId: number) => {
 export const useArchiveBucket = () => {
   const qc = useQueryClient()
   return useMutation<void, unknown, number>({
-    mutationFn: (id) => client.delete(`/buckets/${id}`).then(() => undefined),
+    mutationFn: (id) => client.post(`/buckets/${id}/archive`).then(() => undefined),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['buckets'] }),
+  })
+}
+
+export const useDeleteBucket = () => {
+  const qc = useQueryClient()
+  return useMutation<void, unknown, { id: number; password: string }>({
+    mutationFn: ({ id, password }) => client.delete(`/buckets/${id}`, { data: { password } }).then(() => undefined),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['buckets'] }),
   })
 }

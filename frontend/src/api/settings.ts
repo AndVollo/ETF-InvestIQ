@@ -27,3 +27,34 @@ export const useBackupDb = () =>
   useMutation<BackupResponse, unknown, void>({
     mutationFn: () => client.post<BackupResponse>('/settings/backup').then(r => r.data),
   })
+
+/* ── FRED Validation ────────────────────────────────────────────────────────── */
+
+export interface FredValidateResponse {
+  valid: boolean
+  message: string
+}
+
+export const useValidateFred = () =>
+  useMutation<FredValidateResponse, unknown, { api_key: string }>({
+    mutationFn: (payload) =>
+      client.post<FredValidateResponse>('/settings/validate-fred', payload).then(r => r.data),
+  })
+
+/* ── Connection Status ──────────────────────────────────────────────────────── */
+
+export interface ConnectionStatusResponse {
+  fred: { connected: boolean; has_key: boolean; message: string }
+  yfinance: { connected: boolean; message: string }
+  internet: { connected: boolean; message: string }
+}
+
+export const useConnectionStatus = (enabled = true) =>
+  useQuery<ConnectionStatusResponse>({
+    queryKey: ['connection-status'],
+    queryFn: () =>
+      client.get<ConnectionStatusResponse>('/settings/connection-status').then(r => r.data),
+    enabled,
+    staleTime: 1000 * 30,
+    refetchOnWindowFocus: false,
+  })

@@ -27,9 +27,12 @@ def configure_logging(debug: bool = False) -> None:
 
     logging.basicConfig(
         format="%(message)s",
-        stream=sys.stdout,
+        stream=sys.stderr,
         level=level,
     )
+    # Ensure logs are flushed immediately
+    for handler in logging.root.handlers:
+        handler.flush()
 
 
 def get_logger(name: str) -> structlog.stdlib.BoundLogger:

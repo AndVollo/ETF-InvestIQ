@@ -78,7 +78,12 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     )
 
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 async def generic_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("unhandled_exception", path=request.url.path)
     return JSONResponse(
         status_code=500,
         content={"message_key": "error.internal", "params": {}},

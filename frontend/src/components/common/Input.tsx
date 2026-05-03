@@ -5,22 +5,20 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, id, className = '', ...props }, ref) => (
-    <div className="flex flex-col gap-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {label}
-        </label>
-      )}
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { label, error, id, className = '', ...props },
+  ref,
+) {
+  return (
+    <div className="form-field">
+      {label && <label htmlFor={id} className="form-field__label">{label}</label>}
       <input
         ref={ref}
         id={id}
-        className={`rounded-md border px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors ${error ? 'border-danger' : 'border-gray-300 dark:border-gray-600'} ${className}`}
+        className={`input ${error ? 'input--error' : ''} ${className}`}
         {...props}
       />
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <span className="form-field__hint" style={{ color: 'var(--danger)' }}>{error}</span>}
     </div>
-  ),
-)
-Input.displayName = 'Input'
+  )
+})

@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.db.models.user import User
 from app.db.session import get_db
+from app.dependencies import get_current_user
 from app.schemas.drawdown import DrawdownScenario, DrawdownSimulationResponse
 from app.services import bucket_service, drawdown_service
 
@@ -17,7 +19,9 @@ router = APIRouter(prefix="/drawdown", tags=["drawdown"])
 async def run_simulation(
     bucket_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DrawdownSimulationResponse:
+    await bucket_service.get_user_bucket(bucket_id, current_user.id, db)
     await bucket_service.get_active_bucket(bucket_id, db)
     return await drawdown_service.simulate_bucket(bucket_id, db)
 
@@ -26,8 +30,9 @@ async def run_simulation(
 async def get_latest_simulation(
     bucket_id: int,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> DrawdownSimulationResponse:
-    await bucket_service.get_bucket(bucket_id, db)
+    await bucket_service.get_user_bucket(bucket_id, current_user.id, db)
     sim = await drawdown_service.get_latest_simulation(bucket_id, db)
     if sim is None:
         raise NotFoundError("drawdown_simulation", bucket_id)

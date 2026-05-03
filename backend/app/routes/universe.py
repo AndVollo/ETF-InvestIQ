@@ -36,19 +36,26 @@ def _meta_from_dict(d: dict) -> ETFMetaResponse:
     )
 
 
-def _scored_to_response(scored: svc_score.ScoredETF) -> ETFScoreResponse:
+def _scored_to_response(scored: svc_score.ScoredETF, meta: dict) -> ETFScoreResponse:
     return ETFScoreResponse(
         ticker=scored.ticker,
         name=scored.name,
         bucket=scored.bucket,
+        isin=meta.get("isin"),
+        domicile=meta.get("domicile", "US"),
+        distribution=meta.get("distribution", "Distributing"),
+        ucits=meta.get("ucits", False),
         ter=scored.ter,
         aum_b=scored.aum_b,
-        composite_score=round(scored.composite_score, 4),
-        components=ComponentScoresResponse(
-            cost=round(scored.components.cost, 4),
-            sharpe_3y=round(scored.components.sharpe_3y, 4),
-            tracking_error=round(scored.components.tracking_error, 4),
-            liquidity_aum=round(scored.components.liquidity_aum, 4),
+        inception=meta.get("inception"),
+        description_en=meta.get("description_en", ""),
+        description_he=meta.get("description_he", ""),
+        composite_score=round(scored.composite_score * 10, 2),
+        component_scores=ComponentScoresResponse(
+            cost=round(scored.components.cost * 10, 2),
+            sharpe_3y=round(scored.components.sharpe_3y * 10, 2),
+            tracking_error=round(scored.components.tracking_error * 10, 2),
+            liquidity_aum=round(scored.components.liquidity_aum * 10, 2),
             sharpe_computed=scored.components.sharpe_computed,
         ),
         rank=scored.rank,
@@ -56,12 +63,13 @@ def _scored_to_response(scored: svc_score.ScoredETF) -> ETFScoreResponse:
 
 
 @router.get("/", response_model=UniverseListResponse)
-async def list_universe() -> UniverseListResponse:
+async def list_universe(db: AsyncSession = Depends(get_db)) -> UniverseListResponse:
     universe = svc_uni.load_universe()
     buckets_raw = universe.get("buckets", {})
+    rf_rate = await fred_client.get_risk_free_rate(db)
 
     bucket_infos: list[BucketInfo] = []
-    all_etfs: list[ETFMetaResponse] = []
+    all_scored: list[ETFScoreResponse] = []
 
     for bucket_name, bucket_data in buckets_raw.items():
         etfs_in = bucket_data.get("etfs", [])
@@ -75,14 +83,40 @@ async def list_universe() -> UniverseListResponse:
                 etf_count=len(etfs_in),
             )
         )
-        for etf in etfs_in:
-            all_etfs.append(_meta_from_dict({**etf, "bucket": bucket_name}))
+        for etf_meta in etfs_in:
+            scored = await svc_score.calculate_composite_score(etf_meta["ticker"], db, rf_rate)
+            if scored:
+                all_scored.append(_scored_to_response(scored, etf_meta))
+            else:
+                # Fallback if scoring fails for some reason (e.g. no price data)
+                # We still want to show the ETF in the browser
+                all_scored.append(
+                    ETFScoreResponse(
+                        ticker=etf_meta["ticker"],
+                        name=etf_meta.get("name", ""),
+                        bucket=bucket_name,
+                        isin=etf_meta.get("isin"),
+                        domicile=etf_meta.get("domicile", "US"),
+                        distribution=etf_meta.get("distribution", "Distributing"),
+                        ucits=etf_meta.get("ucits", False),
+                        ter=etf_meta.get("ter", 0.0),
+                        composite_score=0.0,
+                        component_scores=ComponentScoresResponse(
+                            cost=0.0,
+                            sharpe_3y=0.0,
+                            tracking_error=0.0,
+                            liquidity_aum=0.0,
+                            sharpe_computed=False
+                        ),
+                        rank=0
+                    )
+                )
 
     return UniverseListResponse(
         version=svc_uni.get_universe_version(),
-        total_etfs=len(all_etfs),
+        total_etfs=len(all_scored),
         buckets=bucket_infos,
-        etfs=all_etfs,
+        etfs=all_scored,
     )
 
 
@@ -109,7 +143,7 @@ async def scores_in_bucket(
     bucket: str, db: AsyncSession = Depends(get_db)
 ) -> list[ETFScoreResponse]:
     ranked = await svc_score.rank_within_bucket(bucket, db)
-    return [_scored_to_response(s) for s in ranked]
+    return [_scored_to_response(s, svc_uni.get_etf_metadata(s.ticker) or {}) for s in ranked]
 
 
 @router.post("/shortlist", response_model=ShortlistResponse)
@@ -123,7 +157,7 @@ async def build_shortlist(
     for ticker in tickers:
         s = await svc_score.calculate_composite_score(ticker, db, rf_rate)
         if s:
-            scored.append(_scored_to_response(s))
+            scored.append(_scored_to_response(s, svc_uni.get_etf_metadata(ticker) or {}))
 
     return ShortlistResponse(shortlist=tickers, scored=scored)
 

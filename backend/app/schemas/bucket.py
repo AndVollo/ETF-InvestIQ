@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 class BucketCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     horizon_type: str  # SHORT | MEDIUM | LONG
+    initial_investment: float | None = Field(default=None, gt=0)
     target_amount: float | None = Field(default=None, gt=0)
     target_currency: str = "ILS"
     target_date: date | None = None
@@ -30,6 +31,7 @@ class BucketCreate(BaseModel):
 
 class BucketUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
+    initial_investment: float | None = Field(default=None, gt=0)
     target_amount: float | None = Field(default=None, gt=0)
     target_currency: str | None = None
     target_date: date | None = None
@@ -40,6 +42,7 @@ class BucketResponse(BaseModel):
     id: int
     name: str
     horizon_type: str
+    initial_investment: float | None
     target_amount: float | None
     target_currency: str
     target_date: date | None
@@ -77,6 +80,7 @@ class BucketSummaryResponse(BaseModel):
     total_value_usd: float
     total_value_ils: float | None     # None if FX rate unavailable
     holdings_count: int
+    initial_investment: float | None
     target_amount: float | None
     target_currency: str
     target_date: date | None
@@ -94,3 +98,7 @@ class GoalProgressResponse(BaseModel):
     progress_pct: float | None
     amount_remaining: float | None
     months_remaining: int | None
+
+
+class PasswordConfirmation(BaseModel):
+    password: str

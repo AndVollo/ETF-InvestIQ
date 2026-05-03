@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-import yfinance as yf
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,6 +60,7 @@ _SCENARIO_INDEX = {"2000 Dot-Com": 0, "2008 GFC": 1, "2020 COVID": 2, "2022 Rate
 
 
 def _fetch_prices_sync(ticker: str, start: date, end: date) -> list[dict[str, Any]]:
+    import yfinance as yf
     t = yf.Ticker(ticker)
     # Fetch a window around target dates to handle weekends/holidays
     df = t.history(

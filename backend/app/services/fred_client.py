@@ -22,9 +22,12 @@ SERIES_USDILS = "DEXISUS"    # USD to ILS exchange rate (units: ILS per USD)
 SERIES_FEDFUNDS = "FEDFUNDS"  # Effective Federal Funds Rate (monthly %)
 
 
+from app.services import settings_service
+
 class FREDClient:
-    def _has_key(self) -> bool:
-        return bool(settings.fred_api_key.strip())
+    def _utc(self, dt: datetime) -> datetime:
+        """Treat naive datetimes (from SQLite) as UTC."""
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
     async def get_latest(
         self,
@@ -44,22 +47,29 @@ class FREDClient:
         )
         row = result.scalar_one_or_none()
 
-        if row and row.updated_at > stale_threshold:
+        if row and self._utc(row.updated_at) > stale_threshold:
             return row.value
 
-        if not self._has_key():
-            logger.info("FRED key not configured, using cached/default", series=series_id)
-            return row.value if row else None
-
         fresh = await self._fetch_and_cache(series_id, db)
-        return fresh
+        if fresh is not None:
+            return fresh
+        
+        # Fallback to cached if refresh failed
+        return row.value if row else None
 
     async def _fetch_and_cache(
         self, series_id: str, db: AsyncSession
     ) -> float | None:
+        fred_key = await settings_service.get_setting("fred_api_key", db)
+        if not fred_key or not str(fred_key).strip():
+            logger.info("FRED key not configured, using cached/default", series=series_id)
+            return None
+
+        api_key = str(fred_key).strip().lower()
+        
         params = {
             "series_id": series_id,
-            "api_key": settings.fred_api_key,
+            "api_key": api_key,
             "file_type": "json",
             "sort_order": "desc",
             "limit": "10",
