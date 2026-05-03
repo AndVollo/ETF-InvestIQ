@@ -60,6 +60,7 @@ export default function SmartDeposit() {
             </select>
           </div>
           <Input
+            id="deposit-amount"
             label={t('deposit.amount_label')}
             type="number"
             value={amount}

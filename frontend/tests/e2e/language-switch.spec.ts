@@ -1,86 +1,90 @@
 import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
-async function mockApis(page: import('@playwright/test').Page) {
-  await page.route('**/api/settings/', (r) =>
+// Use Architect page for language tests: it renders immediately without API loading spinners
+async function mockApis(page: Page) {
+  await page.route(/\/api\/v1\/settings/, (r) =>
     r.fulfill({ json: { settings: [{ key: 'base_currency', value: 'USD' }] } }),
   )
-  await page.route('**/api/settings/**', (r) =>
-    r.fulfill({ json: { key: 'language', value: 'en' } }),
-  )
-  await page.route('**/api/buckets/', (r) => r.fulfill({ json: { items: [] } }))
+  await page.route(/\/api\/v1\/buckets/, (r) => r.fulfill({ json: [] }))
 }
 
+// The sidebar has two buttons: "עב" (Hebrew) and "EN" (English)
+
 test.describe('Language Switch (EN ↔ HE)', () => {
-  test.beforeEach(async ({ page }) => {
+  test('default language is Hebrew — dir is RTL', async ({ page }) => {
     await mockApis(page)
+    await page.goto('/architect')
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
   })
 
-  test('default language is English — nav labels are in English', async ({ page }) => {
-    await page.goto('/settings')
-    // The settings page title should be in English by default
-    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible()
-    await expect(page.getByText(/general/i)).toBeVisible()
+  test('default language is Hebrew — nav labels are Hebrew', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
+    await expect(page.getByRole('link', { name: /דשבורד/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: /הגדרות/ })).toBeVisible()
   })
 
-  test('switching to Hebrew changes nav labels to Hebrew', async ({ page }) => {
-    await page.goto('/settings')
-
-    const langSelect = page.locator('select').filter({ hasText: /english|עברית/i }).first()
-    await langSelect.selectOption('he')
-
-    // After switching to Hebrew the heading should change
-    await expect(page.getByRole('heading', { name: 'הגדרות' })).toBeVisible({ timeout: 3000 })
+  test('default language is Hebrew — page heading is in Hebrew', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
+    await expect(page.getByRole('heading', { name: 'ארכיטקט תיק' })).toBeVisible()
   })
 
-  test('switching to Hebrew makes layout direction RTL', async ({ page }) => {
-    await page.goto('/settings')
-
-    const langSelect = page.locator('select').filter({ hasText: /english|עברית/i }).first()
-    await langSelect.selectOption('he')
-
-    // The <html> or root element should have dir="rtl" after language switch
-    const dir = await page.locator('html').getAttribute('dir')
-    expect(dir).toBe('rtl')
+  test('clicking EN button switches layout to LTR', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
+    await page.getByRole('button', { name: 'EN' }).click()
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
   })
 
-  test('switching back to English restores LTR', async ({ page }) => {
-    await page.goto('/settings')
-
-    const langSelect = page.locator('select').filter({ hasText: /english|עברית/i }).first()
-    await langSelect.selectOption('he')
-    await langSelect.selectOption('en')
-
-    const dir = await page.locator('html').getAttribute('dir')
-    expect(dir).toBe('ltr')
+  test('clicking EN button switches page heading to English', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
+    await page.getByRole('button', { name: 'EN' }).click()
+    await expect(page.getByRole('heading', { name: 'Portfolio Architect' })).toBeVisible({ timeout: 3000 })
   })
 
-  test('Hebrew: navigation sidebar shows Hebrew labels', async ({ page }) => {
-    await page.goto('/settings')
-
-    const langSelect = page.locator('select').filter({ hasText: /english|עברית/i }).first()
-    await langSelect.selectOption('he')
-
-    // Sidebar navigation should have Hebrew labels
-    await expect(page.getByRole('link', { name: 'דשבורד' })).toBeVisible({ timeout: 3000 })
-    await expect(page.getByRole('link', { name: 'הגדרות' })).toBeVisible()
+  test('clicking EN button switches nav labels to English', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
+    await page.getByRole('button', { name: 'EN' }).click()
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible({ timeout: 3000 })
+    await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
   })
 
-  test('English: navigation sidebar shows English labels', async ({ page }) => {
-    await page.goto('/settings')
-
-    await expect(page.getByRole('link', { name: /dashboard/i })).toBeVisible()
-    await expect(page.getByRole('link', { name: /settings/i })).toBeVisible()
+  test('clicking עב button from English restores RTL', async ({ page }) => {
+    await mockApis(page)
+    await page.addInitScript(() => localStorage.setItem('lang', 'en'))
+    await page.goto('/architect')
+    await page.getByRole('button', { name: 'עב' }).click()
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
   })
 
-  test('language persists across page navigation', async ({ page }) => {
-    await page.goto('/settings')
+  test('language persists across client-side navigation', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
 
-    const langSelect = page.locator('select').filter({ hasText: /english|עברית/i }).first()
-    await langSelect.selectOption('he')
+    // Switch to English
+    await page.getByRole('button', { name: 'EN' }).click()
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
 
-    // Navigate to dashboard
-    await page.goto('/dashboard')
-    // Dashboard title should still be in Hebrew
-    await expect(page.getByRole('heading', { name: 'דשבורד' })).toBeVisible({ timeout: 3000 })
+    // Navigate via sidebar link (client-side)
+    await page.getByRole('link', { name: 'Dashboard' }).click()
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
+  })
+
+  test('language persists across hard page reload', async ({ page }) => {
+    await mockApis(page)
+    await page.goto('/architect')
+
+    // Switch to English
+    await page.getByRole('button', { name: 'EN' }).click()
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
+
+    // Hard reload re-reads localStorage
+    await page.reload()
+    await mockApis(page)
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr')
   })
 })

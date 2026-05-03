@@ -135,14 +135,16 @@ export default function Architect() {
               {buckets.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
-          <Input label={t('architect.goal_desc')} value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
+          <Input id="goal-desc" label={t('architect.goal_desc')} value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
           <Input
+            id="target-amount"
             label={t('architect.target_amount_ils')}
             type="number"
             value={targetAmount ?? ''}
             onChange={(e) => setTargetAmount(e.target.value ? Number(e.target.value) : undefined)}
           />
           <Input
+            id="monthly-deposit"
             label={t('architect.monthly_deposit_ils')}
             type="number"
             value={monthlyDeposit ?? ''}
@@ -155,6 +157,7 @@ export default function Architect() {
       {step === 2 && (
         <div className="flex flex-col gap-4">
           <Input
+            id="tickers-input"
             label="Tickers"
             placeholder={t('architect.tickers_placeholder')}
             value={tickersInput}
