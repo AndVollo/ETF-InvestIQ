@@ -24,6 +24,7 @@ class ArchitectSession(Base, TimestampMixin):
     shortlist_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     ai_proposal_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     final_allocation_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    investor_profile_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     rationale_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     sector_report_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     drawdown_report_json: Mapped[str | None] = mapped_column(Text, nullable=True)

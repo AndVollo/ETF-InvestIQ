@@ -97,12 +97,13 @@ def _format_correlation_table(matrix: dict[str, dict[str, float]]) -> str:
 def _generate_discovery_prompt(
     bucket: Any, profile: InvestorProfile, universe_summary: str
 ) -> str:
+    symbol = "$" if profile.currency == "USD" else "₪"
     return f"""You are a passive-investing analyst. Your task is to suggest ETF CANDIDATES for a long-term portfolio.
 
 ## Investor Profile
 - Goal: {profile.goal_description}
-- Target amount: {f"₪{profile.target_amount_ils:,.0f}" if profile.target_amount_ils else "Not specified"}
-- Monthly deposit: {f"₪{profile.monthly_deposit_ils:,.0f}" if profile.monthly_deposit_ils else "Not specified"}
+- Target amount: {f"{symbol}{profile.target_amount:,.0f}" if profile.target_amount else "Not specified"}
+- Monthly deposit: {f"{symbol}{profile.monthly_deposit:,.0f}" if profile.monthly_deposit else "Not specified"}
 - Bucket horizon: {getattr(bucket, 'horizon_type', 'LONG')}
 - Risk notes: {profile.risk_notes or "None"}
 
@@ -238,6 +239,7 @@ async def start_session(
         user_id=user_id,
         bucket_id=bucket_id,
         status="DRAFT",
+        investor_profile_json=profile.model_dump_json(),
         selected_buckets_json=json.dumps({"horizon_type": bucket.horizon_type}),
         shortlist_json=None,
         ai_proposal_json=None,
@@ -672,6 +674,18 @@ async def confirm_session(
         h.is_archived = True
         h.updated_at = now
 
+    # Update bucket target amount if provided in profile
+    if session.investor_profile_json:
+        from app.schemas.architect import InvestorProfile
+        profile_data = json.loads(session.investor_profile_json)
+        profile = InvestorProfile(**profile_data)
+        if profile.target_amount:
+            from app.db.models.bucket import GoalBucket
+            bucket_row = await db.get(GoalBucket, bucket_id)
+            if bucket_row:
+                bucket_row.target_amount = profile.target_amount
+                bucket_row.updated_at = now
+
     # Create new holdings from allocation
     for item in allocation:
         db.add(Holding(
@@ -735,10 +749,17 @@ async def get_session(
         [AllocationItem(**a) for a in json.loads(session.final_allocation_json)]
         if session.final_allocation_json else None
     )
+    from app.schemas.architect import InvestorProfile
+    investor_profile = (
+        InvestorProfile(**json.loads(session.investor_profile_json))
+        if session.investor_profile_json else None
+    )
+
     return ArchitectSessionResponse(
         session_id=session.id,
         bucket_id=session.bucket_id,
         status=session.status,
+        investor_profile=investor_profile,
         shortlist=shortlist,
         final_allocation=allocation,
         rationale=session.rationale_text,

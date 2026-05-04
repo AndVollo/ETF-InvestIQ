@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBuckets } from '@/api/buckets'
 import {
@@ -18,6 +18,7 @@ import {
   Badge,
   Field,
   Input,
+  InputGroup,
   Select,
   Textarea,
   Stepper,
@@ -50,12 +51,26 @@ export default function Architect() {
 
   const startSession = useStartArchitectSession()
   const { data: session } = useArchitectSession(sessionId)
+  const selectedBucket = buckets.find(b => b.id === bucketId)
+  const currency = selectedBucket?.target_currency || 'USD'
+  const symbol = currency === 'USD' ? '$' : '₪'
+
   const ingestCandidates = useIngestCandidates(sessionId)
   const autoSelect = useAutoSelectCandidates(sessionId)
   const { data: engineerPrompt } = useEngineerPrompt(sessionId)
   const ingestAllocation = useIngestAllocation(sessionId)
   const reviewDrawdown = useReviewDrawdown(sessionId)
   const confirmSession = useConfirmArchitectSession(sessionId)
+
+  // Populate from session if it exists and we're not at step 0
+  useEffect(() => {
+    if (session?.investor_profile && step > 0) {
+      setGoalDesc(session.investor_profile.goal_description)
+      setTargetAmount(session.investor_profile.target_amount)
+      setMonthlyDeposit(session.investor_profile.monthly_deposit)
+      if (session.bucket_id) setBucketId(session.bucket_id)
+    }
+  }, [session, step])
 
   const STEPS = [
     { label: t('architect.step1_title') },
@@ -71,8 +86,9 @@ export default function Architect() {
       bucket_id: bucketId,
       investor_profile: {
         goal_description: goalDesc,
-        target_amount_ils: targetAmount,
-        monthly_deposit_ils: monthlyDeposit,
+        target_amount: targetAmount,
+        monthly_deposit: monthlyDeposit,
+        currency: currency,
       },
     })
     setSessionId(res.session_id)
@@ -148,19 +164,23 @@ export default function Architect() {
                   <Field label={t('architect.goal_desc')}>
                     <Input value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
                   </Field>
-                  <Field label={t('architect.target_amount_ils')}>
-                    <Input
-                      type="number"
-                      value={targetAmount ?? ''}
-                      onChange={(e) => setTargetAmount(e.target.value ? Number(e.target.value) : undefined)}
-                    />
+                  <Field label={t('architect.target_amount')}>
+                    <InputGroup prefix={symbol}>
+                      <Input
+                        type="number"
+                        value={targetAmount ?? ''}
+                        onChange={(e) => setTargetAmount(e.target.value ? Number(e.target.value) : undefined)}
+                      />
+                    </InputGroup>
                   </Field>
-                  <Field label={t('architect.monthly_deposit_ils')}>
-                    <Input
-                      type="number"
-                      value={monthlyDeposit ?? ''}
-                      onChange={(e) => setMonthlyDeposit(e.target.value ? Number(e.target.value) : undefined)}
-                    />
+                  <Field label={t('architect.monthly_deposit')}>
+                    <InputGroup prefix={symbol}>
+                      <Input
+                        type="number"
+                        value={monthlyDeposit ?? ''}
+                        onChange={(e) => setMonthlyDeposit(e.target.value ? Number(e.target.value) : undefined)}
+                      />
+                    </InputGroup>
                   </Field>
                   <div>
                     <Button onClick={handleStart} loading={startSession.isPending}>
@@ -399,6 +419,23 @@ export default function Architect() {
 
           {step === 5 && (
             <>
+              {session?.investor_profile && (
+                <Card style={{ marginBottom: 14 }}>
+                  <Card.Header title={t('architect.profile_summary')} />
+                  <Card.Body>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+                      <div>
+                        <div className="text-muted">{t('architect.goal_desc')}</div>
+                        <div style={{ fontWeight: 500 }}>{session.investor_profile.goal_description}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted">{t('architect.target_amount')}</div>
+                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.target_amount || 0, currency)}</div>
+                      </div>
+                    </div>
+                  </Card.Body>
+                </Card>
+              )}
               {drawdownReport && (
                 <Card style={{ background: 'var(--warning-bg)', borderColor: 'transparent' }}>
                   <Card.Body>

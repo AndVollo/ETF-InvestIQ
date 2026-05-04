@@ -8,8 +8,9 @@ from pydantic import BaseModel, Field
 
 class InvestorProfile(BaseModel):
     goal_description: str = Field(min_length=1, max_length=500)
-    target_amount_ils: float | None = Field(default=None, gt=0)
-    monthly_deposit_ils: float | None = Field(default=None, gt=0)
+    target_amount: float | None = Field(default=None, gt=0)
+    monthly_deposit: float | None = Field(default=None, gt=0)
+    currency: str = Field(default="USD")
     risk_notes: str | None = Field(default=None, max_length=300)
 
 
@@ -93,6 +94,7 @@ class ArchitectSessionResponse(BaseModel):
     session_id: int
     bucket_id: int | None
     status: str
+    investor_profile: InvestorProfile | None = None
     shortlist: list[CandidateDetail] | None
     final_allocation: list[AllocationItem] | None
     rationale: str | None
