@@ -14,6 +14,7 @@ class User(Base, TimestampMixin):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    latest_terms_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     buckets: Mapped[list["GoalBucket"]] = relationship(  # type: ignore[name-defined]
         "GoalBucket", back_populates="user", lazy="select"

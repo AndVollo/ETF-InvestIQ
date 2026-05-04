@@ -97,9 +97,14 @@ async def get_holdings(
 ) -> BucketHoldingsResponse:
     await bucket_service.get_user_bucket(bucket_id, current_user.id, db)
     total_value_usd, enriched = await bucket_service.get_holdings_with_drift(bucket_id, db)
+    
+    fx_rate = await fred_client.get_usd_ils_rate(db)
+    total_value_ils = round(total_value_usd * fx_rate, 2) if fx_rate else None
+
     return BucketHoldingsResponse(
         bucket_id=bucket_id,
         total_value_usd=round(total_value_usd, 4),
+        total_value_ils=total_value_ils,
         holdings=enriched,
     )
 

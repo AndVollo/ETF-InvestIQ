@@ -12,7 +12,7 @@ import {
 import type { BucketCreate, HoldingCreate, Bucket } from '@/types/api'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { EmptyState } from '@/components/common/EmptyState'
-import { Card, Button, Badge, Modal, Field, Input, Select, Icon } from '@/components/design'
+import { Card, Button, Badge, Modal, Field, Input, Select, Icon, Seg, InputGroup } from '@/components/design'
 import { formatCurrency } from '@/utils/formatting'
 
 const HORIZON_TYPES = ['SHORT', 'MEDIUM', 'LONG'] as const
@@ -26,6 +26,7 @@ function CreateBucketModal({ onClose }: { onClose: () => void }) {
     initial_investment: undefined,
     target_amount: undefined,
     target_date: undefined,
+    target_currency: 'USD',
     description: '',
   })
   const [nameError, setNameError] = useState('')
@@ -75,22 +76,38 @@ function CreateBucketModal({ onClose }: { onClose: () => void }) {
           ))}
         </Select>
       </Field>
-      <Field label={t('buckets.initial_investment')}>
-        <Input
-          type="number"
-          placeholder="0"
-          value={form.initial_investment ?? ''}
-          onChange={(e) => setForm({ ...form, initial_investment: e.target.value ? Number(e.target.value) : undefined })}
+      <Field label={t('buckets.target_currency')}>
+        <Seg<'USD' | 'ILS'>
+          value={form.target_currency as 'USD' | 'ILS'}
+          onChange={(v) => setForm({ ...form, target_currency: v })}
+          options={[
+            { value: 'USD', label: 'USD' },
+            { value: 'ILS', label: 'ILS' },
+          ]}
         />
+      </Field>
+      <Field label={t('buckets.initial_investment')}>
+        <InputGroup prefix={form.target_currency === 'USD' ? '$' : '₪'}>
+          <input
+            className="input-group__input tnum"
+            type="number"
+            placeholder="0"
+            value={form.initial_investment ?? ''}
+            onChange={(e) => setForm({ ...form, initial_investment: e.target.value ? Number(e.target.value) : undefined })}
+          />
+        </InputGroup>
         <p className="hint" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{t('buckets.initial_investment_hint')}</p>
       </Field>
       <Field label={t('buckets.target_amount')}>
-        <Input
-          type="number"
-          placeholder="—"
-          value={form.target_amount ?? ''}
-          onChange={(e) => setForm({ ...form, target_amount: e.target.value ? Number(e.target.value) : undefined })}
-        />
+        <InputGroup prefix={form.target_currency === 'USD' ? '$' : '₪'}>
+          <input
+            className="input-group__input tnum"
+            type="number"
+            placeholder="—"
+            value={form.target_amount ?? ''}
+            onChange={(e) => setForm({ ...form, target_amount: e.target.value ? Number(e.target.value) : undefined })}
+          />
+        </InputGroup>
         <p className="hint" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>{t('buckets.target_amount_hint')}</p>
       </Field>
       <Field label={t('buckets.target_date')}>
@@ -176,7 +193,10 @@ function BucketCard({ bucket }: { bucket: Bucket }) {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [deletePassword, setDeletePassword] = useState('')
 
-  const totalValue = holdingsData?.total_value_usd ?? 0
+  const totalValue = (bucket.target_currency === 'ILS' && holdingsData?.total_value_ils != null)
+    ? holdingsData.total_value_ils
+    : (holdingsData?.total_value_usd ?? 0)
+  const currency = (bucket.target_currency as 'USD' | 'ILS') || 'USD'
   const pct = bucket.target_amount ? (totalValue / bucket.target_amount) * 100 : null
 
   return (
@@ -259,14 +279,21 @@ function BucketCard({ bucket }: { bucket: Bucket }) {
         )}
 
         <div style={{ marginTop: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span className="tnum" style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>
-              {formatCurrency(totalValue, 'USD')}
-            </span>
-            {bucket.target_amount && (
-              <span className="tnum" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                / {formatCurrency(bucket.target_amount, (bucket.target_currency as 'USD' | 'ILS') || 'USD')}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span className="tnum" style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>
+                {formatCurrency(totalValue, currency)}
               </span>
+              {bucket.target_amount && (
+                <span className="tnum" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  / {formatCurrency(bucket.target_amount, currency)}
+                </span>
+              )}
+            </div>
+            {bucket.initial_investment && (
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {t('buckets.initial_investment')}: {formatCurrency(bucket.initial_investment, (bucket.target_currency as 'USD' | 'ILS') || 'USD')}
+              </div>
             )}
           </div>
           {pct !== null && (

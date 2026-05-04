@@ -2,9 +2,15 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.terms import (
+    TERMS_EFFECTIVE_DATE,
+    TERMS_EN,
+    TERMS_HE,
+    TERMS_VERSION,
+)
 from app.db.session import get_db
 from app.dependencies import get_current_user
 from app.db.models.user import User
@@ -15,6 +21,8 @@ from app.schemas.auth import (
     LoginRequest,
     ResetPasswordRequest,
     SignupRequest,
+    TermsAcceptRequest,
+    TermsResponse,
     UserResponse,
 )
 from app.services import auth_service, email_service
@@ -22,21 +30,68 @@ from app.services import auth_service, email_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _client_ip(request: Request) -> str | None:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+@router.get("/terms", response_model=TermsResponse)
+async def get_terms() -> TermsResponse:
+    return TermsResponse(
+        version=TERMS_VERSION,
+        effective_date=TERMS_EFFECTIVE_DATE,
+        text_en=TERMS_EN,
+        text_he=TERMS_HE,
+    )
+
+
+@router.post("/terms/accept", response_model=UserResponse)
+async def accept_terms(
+    payload: TermsAcceptRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    await auth_service.record_terms_acceptance(
+        current_user,
+        payload.terms_version,
+        db,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    return UserResponse.model_validate(current_user)
+
+
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)) -> AuthResponse:
-    user, token = await auth_service.signup(payload, db)
+async def signup(
+    payload: SignupRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> AuthResponse:
+    user, token = await auth_service.signup(
+        payload, db,
+        ip_address=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
     return AuthResponse(
         access_token=token,
         user=UserResponse.model_validate(user),
+        requires_terms_acceptance=False,
+        current_terms_version=TERMS_VERSION,
     )
 
 
 @router.post("/login", response_model=AuthResponse)
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)) -> AuthResponse:
     user, token = await auth_service.login(payload.email, payload.password, db)
+    requires = user.latest_terms_version != TERMS_VERSION
     return AuthResponse(
         access_token=token,
         user=UserResponse.model_validate(user),
+        requires_terms_acceptance=requires,
+        current_terms_version=TERMS_VERSION,
     )
 
 

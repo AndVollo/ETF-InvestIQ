@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useLanguageStore } from '@/store/languageStore'
 import { useUiStore } from '@/store/uiStore'
-import { Icon, Seg } from '@/components/design'
+import { Icon } from '@/components/design'
 
 interface TopbarProps {
   title: ReactNode
@@ -11,12 +9,10 @@ interface TopbarProps {
 }
 
 export function Topbar({ title, crumb, actions }: TopbarProps) {
-  const { language, setLanguage } = useLanguageStore()
   const theme = useUiStore((s) => s.theme)
   const setTheme = useUiStore((s) => s.setTheme)
   const collapsed = useUiStore((s) => s.sidebarCollapsed)
   const setCollapsed = useUiStore((s) => s.setSidebarCollapsed)
-  const { t } = useTranslation()
 
   return (
     <div className="topbar">
@@ -26,15 +22,6 @@ export function Topbar({ title, crumb, actions }: TopbarProps) {
       </div>
       <div className="topbar__spacer" />
       {actions}
-      <Seg<'en' | 'he'>
-        ariaLabel={t('settings.language')}
-        value={language}
-        onChange={setLanguage}
-        options={[
-          { value: 'en', label: 'EN' },
-          { value: 'he', label: 'HE' },
-        ]}
-      />
       <button
         type="button"
         className="icon-btn"
@@ -55,3 +42,4 @@ export function Topbar({ title, crumb, actions }: TopbarProps) {
     </div>
   )
 }
+

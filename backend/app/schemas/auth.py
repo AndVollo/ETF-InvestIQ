@@ -7,6 +7,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     full_name: str
     password: str
+    terms_version_accepted: str
 
     @field_validator("password")
     @classmethod
@@ -20,6 +21,13 @@ class SignupRequest(BaseModel):
     def name_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("Full name is required")
+        return v.strip()
+
+    @field_validator("terms_version_accepted")
+    @classmethod
+    def terms_must_be_provided(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Terms acceptance is required")
         return v.strip()
 
 
@@ -62,6 +70,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     is_active: bool
+    latest_terms_version: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -70,3 +79,23 @@ class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+    requires_terms_acceptance: bool = False
+    current_terms_version: str | None = None
+
+
+class TermsResponse(BaseModel):
+    version: str
+    effective_date: str
+    text_en: str
+    text_he: str
+
+
+class TermsAcceptRequest(BaseModel):
+    terms_version: str
+
+    @field_validator("terms_version")
+    @classmethod
+    def must_provide(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("terms_version is required")
+        return v.strip()

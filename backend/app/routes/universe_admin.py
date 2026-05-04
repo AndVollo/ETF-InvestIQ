@@ -97,6 +97,7 @@ async def discovery_prompt(
     return DiscoveryPromptResponse(
         prompt=svc.generate_discovery_prompt(),
         bucket_options=sorted(svc_uni.BUCKET_CONFIG.keys()),
+        finviz_screener_url=svc.finviz_screener_url(),
     )
 
 

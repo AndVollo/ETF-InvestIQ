@@ -53,6 +53,7 @@ export interface HoldingDriftItem {
 export interface BucketHoldingsResponse {
   bucket_id: number
   total_value_usd: number
+  total_value_ils: number | null
   holdings: HoldingDriftItem[]
 }
 
@@ -240,6 +241,7 @@ export interface BlacklistEntryCreate {
 export interface DiscoveryPromptResponse {
   prompt: string
   bucket_options: string[]
+  finviz_screener_url: string
 }
 
 export interface BulkImportItem {

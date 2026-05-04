@@ -70,6 +70,7 @@ class HoldingDriftItem(BaseModel):
 class BucketHoldingsResponse(BaseModel):
     bucket_id: int
     total_value_usd: float
+    total_value_ils: float | None = None
     holdings: list[HoldingDriftItem]
 
 

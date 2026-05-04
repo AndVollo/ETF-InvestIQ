@@ -121,6 +121,7 @@ class BlacklistEntryResponse(BaseModel):
 class DiscoveryPromptResponse(BaseModel):
     prompt: str
     bucket_options: list[str]
+    finviz_screener_url: str
 
 
 class BulkImportItem(BaseModel):
@@ -137,6 +138,9 @@ class BulkImportItem(BaseModel):
     inception: date | None = None
     description_en: str | None = None
     description_he: str | None = None
+    fundamental_notes: str | None = None
+    technical_notes: str | None = None
+    evidence_sources: list[str] | None = None
 
 
 class BulkImportRequest(BaseModel):

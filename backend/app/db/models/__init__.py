@@ -13,6 +13,7 @@ from app.db.models.pending_action import PendingAction
 from app.db.models.price_history import PriceHistory
 from app.db.models.sector_cache import SectorCache
 from app.db.models.settings import AppSetting
+from app.db.models.terms_acceptance import TermsAcceptance
 from app.db.models.universe_blacklist import UniverseBlacklist
 from app.db.models.universe_etf import UniverseETF
 from app.db.models.valuation_cache import ValuationCache
@@ -34,4 +35,5 @@ __all__ = [
     "AppSetting",
     "UniverseETF",
     "UniverseBlacklist",
+    "TermsAcceptance",
 ]

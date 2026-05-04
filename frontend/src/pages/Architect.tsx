@@ -181,10 +181,10 @@ export default function Architect() {
               <Card.Body>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <div style={{
-                    background: 'var(--surface-2, #f5f5f7)',
+                    background: 'var(--bg-input)',
                     padding: 14,
                     borderRadius: 8,
-                    border: '1px solid var(--border-subtle)',
+                    border: '1px solid var(--border-default)',
                   }}>
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>
                       ✨ {t('architect.auto_select_title')}

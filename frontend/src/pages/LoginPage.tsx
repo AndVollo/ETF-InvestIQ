@@ -20,7 +20,10 @@ export default function LoginPage() {
     setError('')
     try {
       const res = await login.mutateAsync({ email, password })
-      setAuth(res.access_token, res.user)
+      setAuth(res.access_token, res.user, {
+        requiresTerms: !!res.requires_terms_acceptance,
+        currentTermsVersion: res.current_terms_version ?? null,
+      })
       navigate('/', { replace: true })
     } catch {
       setError(t('auth.invalid_credentials'))

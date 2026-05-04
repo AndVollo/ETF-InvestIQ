@@ -404,11 +404,19 @@ function DiscoverTab() {
               <textarea
                 readOnly
                 value={prompt?.prompt ?? ''}
-                style={{ width: '100%', minHeight: 220, fontFamily: 'monospace', fontSize: 12, padding: 8 }}
+                style={{ width: '100%', minHeight: 280, fontFamily: 'monospace', fontSize: 12, padding: 8 }}
               />
-              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Button onClick={copyPrompt}>{t('manage_universe.copy_prompt')}</Button>
+                {prompt?.finviz_screener_url && (
+                  <a href={prompt.finviz_screener_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary">↗ {t('manage_universe.open_finviz')}</Button>
+                  </a>
+                )}
               </div>
+              <p className="text-muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>
+                {t('manage_universe.finviz_hint')}
+              </p>
             </>
           )}
         </Card.Body>

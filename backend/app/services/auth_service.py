@@ -10,8 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.core.security import create_access_token, hash_password, verify_password
+from app.core.terms import TERMS_HASH, TERMS_VERSION
 from app.db.models.bucket import GoalBucket
 from app.db.models.password_reset import PasswordResetCode
+from app.db.models.terms_acceptance import TermsAcceptance
 from app.db.models.user import User
 from app.schemas.auth import SignupRequest
 
@@ -42,11 +44,61 @@ class SmtpNotConfiguredError(AppError):
         super().__init__("error.smtp_not_configured", {})
 
 
+class TermsVersionMismatchError(AppError):
+    status_code = 422
+
+    def __init__(self, expected: str, got: str) -> None:
+        super().__init__(
+            "error.terms_version_mismatch",
+            {"expected": expected, "got": got},
+        )
+
+
+async def record_terms_acceptance(
+    user: User,
+    version: str,
+    db: AsyncSession,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Persist an audit row and update the user's cached latest-accepted version.
+    Rejects acceptance attempts for any version other than the current one."""
+    if version != TERMS_VERSION:
+        raise TermsVersionMismatchError(expected=TERMS_VERSION, got=version)
+
+    db.add(TermsAcceptance(
+        user_id=user.id,
+        terms_version=TERMS_VERSION,
+        terms_hash=TERMS_HASH,
+        accepted_at=datetime.now(timezone.utc),
+        ip_address=ip_address,
+        user_agent=user_agent[:500] if user_agent else None,
+    ))
+    user.latest_terms_version = TERMS_VERSION
+    await db.flush()
+    logger.info(
+        "terms_accepted",
+        user_id=user.id,
+        version=TERMS_VERSION,
+        hash=TERMS_HASH[:12],
+    )
+
+
 def _generate_code(length: int = _RESET_CODE_LENGTH) -> str:
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
-async def signup(payload: SignupRequest, db: AsyncSession) -> tuple[User, str]:
+async def signup(
+    payload: SignupRequest,
+    db: AsyncSession,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> tuple[User, str]:
+    if payload.terms_version_accepted != TERMS_VERSION:
+        raise TermsVersionMismatchError(
+            expected=TERMS_VERSION, got=payload.terms_version_accepted
+        )
+
     existing = await db.execute(
         select(User).where(User.email == payload.email.lower())
     )
@@ -62,6 +114,12 @@ async def signup(payload: SignupRequest, db: AsyncSession) -> tuple[User, str]:
     db.add(user)
     await db.flush()
     await db.refresh(user)
+
+    # Record terms acceptance — legal evidence row + cached latest version
+    await record_terms_acceptance(
+        user, payload.terms_version_accepted, db,
+        ip_address=ip_address, user_agent=user_agent,
+    )
 
     # Claim any orphaned buckets (created before auth was added)
     await db.execute(
