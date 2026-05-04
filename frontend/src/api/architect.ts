@@ -43,6 +43,17 @@ export const useIngestCandidates = (sessionId: number) => {
   })
 }
 
+export const useAutoSelectCandidates = (sessionId: number) => {
+  const qc = useQueryClient()
+  return useMutation<CandidateIngestResponse, unknown, void>({
+    mutationFn: () =>
+      client
+        .post<CandidateIngestResponse>(`/architect/sessions/${sessionId}/auto-select`)
+        .then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['architect-session', sessionId] }),
+  })
+}
+
 export const useEngineerPrompt = (sessionId: number) =>
   useQuery<{ session_id: number; engineer_prompt: string; status: string }>({
     queryKey: ['engineer-prompt', sessionId],

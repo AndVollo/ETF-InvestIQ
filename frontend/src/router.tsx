@@ -6,6 +6,7 @@ import SmartDeposit from './pages/SmartDeposit'
 import DrawdownTest from './pages/DrawdownTest'
 import SectorAnalysis from './pages/SectorAnalysis'
 import UniverseBrowser from './pages/UniverseBrowser'
+import ManageUniverse from './pages/ManageUniverse'
 import Architect from './pages/Architect'
 import AuditTrail from './pages/AuditTrail'
 import Settings from './pages/Settings'
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: 'drawdown', element: <DrawdownTest /> },
       { path: 'sectors', element: <SectorAnalysis /> },
       { path: 'universe', element: <UniverseBrowser /> },
+      { path: 'universe/manage', element: <ManageUniverse /> },
       { path: 'architect', element: <Architect /> },
       { path: 'audit', element: <AuditTrail /> },
       { path: 'settings', element: <Settings /> },

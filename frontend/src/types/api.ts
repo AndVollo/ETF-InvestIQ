@@ -188,6 +188,92 @@ export interface UniverseListResponse {
   etfs: ETFScoreResponse[]
 }
 
+// ── Universe Admin ────────────────────────────────────────────────────────────
+export interface UniverseETFAdmin {
+  id: number
+  ticker: string
+  name: string
+  isin: string | null
+  domicile: Domicile
+  distribution: Distribution
+  ucits: boolean
+  ter: number
+  aum_b: number
+  inception: string | null
+  description_en: string | null
+  description_he: string | null
+  bucket_name: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface UniverseETFCreatePayload {
+  ticker: string
+  name: string
+  isin?: string | null
+  domicile: Domicile
+  distribution: Distribution
+  ucits: boolean
+  ter: number
+  aum_b: number
+  inception?: string | null
+  description_en?: string | null
+  description_he?: string | null
+  bucket_name: string
+}
+
+export type UniverseETFUpdatePayload = Partial<UniverseETFCreatePayload> & { is_active?: boolean }
+
+export interface BlacklistEntry {
+  id: number
+  ticker: string
+  reason: string
+  created_at: string
+}
+
+export interface BlacklistEntryCreate {
+  ticker: string
+  reason: string
+}
+
+export interface DiscoveryPromptResponse {
+  prompt: string
+  bucket_options: string[]
+}
+
+export interface BulkImportItem {
+  ticker: string
+  name: string
+  bucket_name: string
+  domicile?: Domicile
+  distribution?: Distribution
+  ucits?: boolean
+  ter?: number
+  aum_b?: number
+  isin?: string | null
+  inception?: string | null
+  description_en?: string | null
+  description_he?: string | null
+}
+
+export interface BulkImportRequest {
+  items: BulkImportItem[]
+}
+
+export interface BulkImportResultItem {
+  ticker: string
+  status: 'added' | 'skipped_duplicate' | 'skipped_blacklisted' | 'error'
+  detail: string | null
+}
+
+export interface BulkImportResponse {
+  added: number
+  skipped: number
+  errors: number
+  results: BulkImportResultItem[]
+}
+
 // ── Valuation ─────────────────────────────────────────────────────────────────
 export type ValuationClassification = 'CHEAP' | 'FAIR' | 'EXPENSIVE' | 'INSUFFICIENT_HISTORY'
 

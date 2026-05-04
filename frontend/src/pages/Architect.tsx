@@ -5,6 +5,7 @@ import {
   useStartArchitectSession,
   useArchitectSession,
   useIngestCandidates,
+  useAutoSelectCandidates,
   useEngineerPrompt,
   useIngestAllocation,
   useReviewDrawdown,
@@ -50,6 +51,7 @@ export default function Architect() {
   const startSession = useStartArchitectSession()
   const { data: session } = useArchitectSession(sessionId)
   const ingestCandidates = useIngestCandidates(sessionId)
+  const autoSelect = useAutoSelectCandidates(sessionId)
   const { data: engineerPrompt } = useEngineerPrompt(sessionId)
   const ingestAllocation = useIngestAllocation(sessionId)
   const reviewDrawdown = useReviewDrawdown(sessionId)
@@ -81,6 +83,17 @@ export default function Architect() {
     const tickers = tickersInput.split(/[\s,]+/).filter(Boolean).map((tk) => tk.toUpperCase())
     await ingestCandidates.mutateAsync(tickers)
     setStep(2)
+  }
+
+  const handleAutoSelect = async () => {
+    try {
+      const res = await autoSelect.mutateAsync()
+      const accepted = res.accepted.length
+      setToast({ msg: t('architect.auto_select_success', { n: accepted }), type: 'success' })
+      setStep(2)
+    } catch {
+      setToast({ msg: t('common.error'), type: 'error' })
+    }
   }
 
   const handleIngestAllocation = async () => {
@@ -161,10 +174,39 @@ export default function Architect() {
 
           {step === 1 && (
             <Card>
-              <Card.Header title={t('architect.step2_title')} />
+              <Card.Header
+                title={t('architect.step2_title')}
+                subtitle={t('architect.step2_subtitle')}
+              />
               <Card.Body>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <Field label="Tickers">
+                  <div style={{
+                    background: 'var(--surface-2, #f5f5f7)',
+                    padding: 14,
+                    borderRadius: 8,
+                    border: '1px solid var(--border-subtle)',
+                  }}>
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                      ✨ {t('architect.auto_select_title')}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 13, marginBottom: 10 }}>
+                      {t('architect.auto_select_subtitle')}
+                    </div>
+                    <Button onClick={handleAutoSelect} loading={autoSelect.isPending}>
+                      {t('architect.auto_select_button')}
+                    </Button>
+                  </div>
+
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    color: 'var(--text-muted)', fontSize: 12,
+                  }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+                    {t('common.or')}
+                    <div style={{ flex: 1, height: 1, background: 'var(--border-subtle)' }} />
+                  </div>
+
+                  <Field label={t('architect.manual_tickers_label')}>
                     <Input
                       placeholder={t('architect.tickers_placeholder')}
                       value={tickersInput}
@@ -172,7 +214,12 @@ export default function Architect() {
                     />
                   </Field>
                   <div>
-                    <Button onClick={handleIngestCandidates} loading={ingestCandidates.isPending}>
+                    <Button
+                      variant="secondary"
+                      onClick={handleIngestCandidates}
+                      loading={ingestCandidates.isPending}
+                      disabled={!tickersInput.trim()}
+                    >
                       {t('architect.ingest')}
                     </Button>
                   </div>

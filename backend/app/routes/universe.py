@@ -179,23 +179,16 @@ async def validate_ticker(ticker: str) -> ValidateResponse:
 @router.get("/blacklist", response_model=BlacklistResponse)
 async def get_blacklist() -> BlacklistResponse:
     bl = svc_uni.get_blacklist()
-    categories: list[BlacklistCategoryResponse] = []
+    grouped: dict[str, list[str]] = {}
+    for ticker, reason in bl.items():
+        grouped.setdefault(reason, []).append(ticker)
 
-    for cat_name, cat_data in bl.items():
-        if cat_name == "high_ter":
-            continue
-        categories.append(
-            BlacklistCategoryResponse(
-                category=cat_name,
-                reason=cat_data.get("reason", ""),
-                reason_he=cat_data.get("reason_he", ""),
-                tickers=cat_data.get("tickers", []),
-            )
-        )
-
-    high_ter = bl.get("high_ter", {})
+    categories = [
+        BlacklistCategoryResponse(category=reason[:40], reason=reason, reason_he="", tickers=tickers)
+        for reason, tickers in grouped.items()
+    ]
     return BlacklistResponse(
         categories=categories,
-        high_ter_threshold=high_ter.get("threshold", 0.50),
-        high_ter_exceptions=high_ter.get("exceptions", []),
+        high_ter_threshold=svc_uni.HIGH_TER_THRESHOLD,
+        high_ter_exceptions=list(svc_uni.HIGH_TER_EXCEPTIONS),
     )

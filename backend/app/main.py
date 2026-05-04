@@ -24,31 +24,51 @@ from app.routes.holdings import router as holdings_router
 from app.routes.sectors import router as sectors_router
 from app.routes.dividends import router as dividends_router
 from app.routes.universe import router as universe_router
+from app.routes.universe_admin import router as universe_admin_router
 from app.routes.valuation import router as valuation_router
 
 logger = get_logger(__name__)
 
 
 def _run_migrations() -> None:
-    """Run Alembic upgrade head — used in frozen (Tauri sidecar) mode where
-    the user can't invoke `alembic upgrade head` themselves. In dev we keep
-    using the create_all fallback so the test conftest stays cheap."""
+    """Run Alembic upgrade head."""
     from alembic import command
     from alembic.config import Config
 
+    logger.info("migration_start", db_url=settings.database_url_sync)
+    
     # In PyInstaller frozen mode, bundled data lives under sys._MEIPASS.
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
     cfg_path = base / "alembic.ini"
+    
+    if not cfg_path.exists():
+        logger.error("alembic_ini_not_found", path=str(cfg_path))
+        return
+
     cfg = Config(str(cfg_path))
-    # Override the relative script_location with the absolute bundled path.
     cfg.set_main_option("script_location", str(base / "alembic"))
     cfg.set_main_option("sqlalchemy.url", settings.database_url_sync)
     
     try:
+        logger.info("alembic_upgrade_executing")
         command.upgrade(cfg, "head")
+        logger.info("alembic_upgrade_success")
     except Exception as exc:
         logger.error("alembic_upgrade_failed", error=str(exc))
+        import traceback
+        logger.error("migration_traceback", traceback=traceback.format_exc())
         sys.exit(1)
+
+
+async def _seed_universe() -> None:
+    from app.db.seed_universe import seed_if_empty
+    from app.db.session import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await seed_if_empty(session)
+    except Exception as exc:
+        logger.error("universe_seed_failed", error=str(exc))
 
 
 @asynccontextmanager
@@ -56,6 +76,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging(debug=settings.debug)
     logger.info("startup", version=settings.app_version, db_path=str(settings.db_path))
     _run_migrations()
+    await _seed_universe()
     yield
     await engine.dispose()
     logger.info("shutdown")
@@ -85,6 +106,7 @@ app.add_exception_handler(Exception, generic_error_handler)  # type: ignore[arg-
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(universe_router, prefix="/api/v1")
+app.include_router(universe_admin_router, prefix="/api/v1")
 app.include_router(valuation_router, prefix="/api/v1")
 app.include_router(buckets_router, prefix="/api/v1")
 app.include_router(holdings_router, prefix="/api/v1")

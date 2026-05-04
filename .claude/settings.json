@@ -25,7 +25,8 @@
       "Bash(curl -s -X POST http://localhost:5173/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"viaproxy@test.com\",\"full_name\":\"Proxy Test\",\"password\":\"pass1234\"}')",
       "Bash(.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000)",
       "Bash(curl -s -X POST http://127.0.0.1:8000/api/v1/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"realuser@test.com\",\"full_name\":\"Real User\",\"password\":\"pass1234\"}')",
-      "Bash(curl -s http://127.0.0.1:8000/api/v1/auth/signup -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"check@test.com\",\"full_name\":\"Check\",\"password\":\"pass1234\"}')"
+      "Bash(curl -s http://127.0.0.1:8000/api/v1/auth/signup -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"check@test.com\",\"full_name\":\"Check\",\"password\":\"pass1234\"}')",
+      "Bash(sqlite3 smart_etf.db \"SELECT COUNT\\(*\\) FROM universe_etfs; SELECT COUNT\\(*\\) FROM universe_blacklist; SELECT bucket_name, COUNT\\(*\\) FROM universe_etfs GROUP BY bucket_name;\")"
     ]
   }
 }

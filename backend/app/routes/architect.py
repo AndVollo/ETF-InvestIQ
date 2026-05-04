@@ -58,6 +58,19 @@ async def ingest_candidates(
     )
 
 
+@router.post("/sessions/{session_id}/auto-select", response_model=CandidateIngestResponse)
+async def auto_select_candidates(
+    session_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> CandidateIngestResponse:
+    """Diversified candidate shortlist picked from the universe by composite
+    score, sized for the session's bucket horizon (LONG≈23, MEDIUM≈15, SHORT≈8)."""
+    return await architect_service.auto_select_and_ingest(
+        session_id, db, user_id=current_user.id
+    )
+
+
 @router.get("/sessions/{session_id}/engineer-prompt", response_model=EngineerPromptResponse)
 async def get_engineer_prompt(
     session_id: int,

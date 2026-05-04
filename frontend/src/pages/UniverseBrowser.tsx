@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { useUniverse, useValuation } from '@/api/universe'
 import type { ETFScoreResponse } from '@/types/api'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -10,6 +11,7 @@ import {
   Modal,
   Seg,
   Input,
+  Select,
   ValuationBadge,
   Spinner,
   Button,
@@ -149,21 +151,50 @@ export default function UniverseBrowser() {
   const { data, isLoading } = useUniverse()
   const [filter, setFilter] = useState('')
   const [selectedEtf, setSelectedEtf] = useState<ETFScoreResponse | null>(null)
+  const [selectedSector, setSelectedSector] = useState<string>('all')
+  const [sortConfig, setSortConfig] = useState<{ key: string; order: 'asc' | 'desc' } | null>(null)
   const domicileFilter = useUiStore((s) => s.domicileFilter)
   const setDomicileFilter = useUiStore((s) => s.setDomicileFilter)
 
   const allEtfs: ETFScoreResponse[] = data ? data.etfs : []
 
+  // Extract unique sectors
+  const sectors = Array.from(new Set(allEtfs.map((e) => e.bucket))).sort()
+
+  const handleSort = (key: string) => {
+    let order: 'asc' | 'desc' = 'asc'
+    if (sortConfig?.key === key && sortConfig.order === 'asc') {
+      order = 'desc'
+    }
+    setSortConfig({ key, order })
+  }
+
   const items = allEtfs.filter((e) => {
     const textMatch =
       !filter ||
       e.ticker.toLowerCase().includes(filter.toLowerCase()) ||
-      e.bucket.toLowerCase().includes(filter.toLowerCase())
+      e.name.toLowerCase().includes(filter.toLowerCase())
     const domicileMatch =
       domicileFilter === 'all' ||
       (domicileFilter === 'ucits' && e.ucits) ||
       (domicileFilter === 'us' && e.domicile === 'US')
-    return textMatch && domicileMatch
+    const sectorMatch = selectedSector === 'all' || e.bucket === selectedSector
+    return textMatch && domicileMatch && sectorMatch
+  })
+
+  const sortedItems = [...items].sort((a, b) => {
+    if (!sortConfig) return 0
+    const { key, order } = sortConfig
+    let valA: any = a[key as keyof ETFScoreResponse]
+    let valB: any = b[key as keyof ETFScoreResponse]
+
+    // Special case for TER and Score to handle nulls
+    if (valA == null) return order === 'asc' ? 1 : -1
+    if (valB == null) return order === 'asc' ? -1 : 1
+
+    if (valA < valB) return order === 'asc' ? -1 : 1
+    if (valA > valB) return order === 'asc' ? 1 : -1
+    return 0
   })
 
   if (isLoading) return <div className="content"><LoadingSpinner /></div>
@@ -176,38 +207,62 @@ export default function UniverseBrowser() {
             title={t('universe.title')}
             subtitle={`${items.length} / ${allEtfs.length}`}
             actions={
-              <Seg<'all' | 'ucits' | 'us'>
-                value={domicileFilter}
-                onChange={setDomicileFilter}
-                options={[
-                  { value: 'all', label: t('universe.filter_domicile_all') },
-                  { value: 'ucits', label: t('universe.filter_domicile_ucits') },
-                  { value: 'us', label: t('universe.filter_domicile_us') },
-                ]}
-              />
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <Seg<'all' | 'ucits' | 'us'>
+                  value={domicileFilter}
+                  onChange={setDomicileFilter}
+                  options={[
+                    { value: 'all', label: t('universe.filter_domicile_all') },
+                    { value: 'ucits', label: t('universe.filter_domicile_ucits') },
+                    { value: 'us', label: t('universe.filter_domicile_us') },
+                  ]}
+                />
+                <Link to="/universe/manage">
+                  <Button variant="secondary" size="sm">{t('universe.manage')}</Button>
+                </Link>
+              </div>
             }
           />
           <Card.Body>
-            <div style={{ marginBottom: 12, position: 'relative' }}>
-              <Input
-                placeholder={t('universe.filterPlaceholder')}
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
+            <div style={{ marginBottom: 16, display: 'flex', gap: 12 }}>
+              <div style={{ flex: 2 }}>
+                <Input
+                  placeholder={t('universe.filterPlaceholder')}
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <Select
+                  value={selectedSector}
+                  onChange={(e) => setSelectedSector(e.target.value)}
+                >
+                  <option value="all">{t('universe.filter_all_categories', { defaultValue: 'All Categories' })}</option>
+                  {sectors.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </Select>
+              </div>
             </div>
             <table className="table">
               <thead>
                 <tr>
                   <th style={{ width: 40 }}>#</th>
-                  <th>Ticker</th>
+                  <th className="is-sortable" onClick={() => handleSort('ticker')}>
+                    Ticker {sortConfig?.key === 'ticker' && (sortConfig.order === 'asc' ? '↑' : '↓')}
+                  </th>
                   <th>{t('universe.category')}</th>
                   <th>{t('universe.domicile')}</th>
-                  <th className="num">{t('universe.ter')}</th>
-                  <th className="num">{t('universe.score')}</th>
+                  <th className="num is-sortable" onClick={() => handleSort('ter')}>
+                    {t('universe.ter')} {sortConfig?.key === 'ter' && (sortConfig.order === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="num is-sortable" onClick={() => handleSort('composite_score')}>
+                    {t('universe.score')} {sortConfig?.key === 'composite_score' && (sortConfig.order === 'asc' ? '↑' : '↓')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((etf, i) => (
+                {sortedItems.map((etf, i) => (
                   <tr
                     key={etf.ticker}
                     className="is-clickable"

@@ -173,8 +173,10 @@ def _universe_summary() -> str:
     from app.services.universe_service import load_universe
     universe = load_universe()
     lines: list[str] = []
-    for bucket_key, etfs in universe.get("etf_universe", {}).items():
-        tickers = [e["ticker"] for e in etfs if isinstance(etfs, list)]
+    for bucket_key, bucket_data in universe.get("buckets", {}).items():
+        tickers = [e["ticker"] for e in bucket_data.get("etfs", [])]
+        if not tickers:
+            continue
         constraint = ""
         if bucket_key == "REITS":
             constraint = " [max 15%]"
@@ -258,6 +260,107 @@ async def start_session(
         discovery_prompt=discovery_prompt,
         status="DRAFT",
     )
+
+
+_BUCKET_ALLOCATION_BY_HORIZON: dict[str, dict[str, int]] = {
+    "LONG": {
+        "GLOBAL_CORE": 4,
+        "US_FACTOR_VALUE": 3,
+        "INTL_FACTOR_VALUE": 2,
+        "US_FACTOR_MOMENTUM": 2,
+        "EMERGING_MARKETS": 3,
+        "TECH_GROWTH": 2,
+        "US_BONDS": 3,
+        "REITS": 2,
+        "COMMODITIES_HEDGE": 2,
+    },
+    "MEDIUM": {
+        "GLOBAL_CORE": 3,
+        "US_FACTOR_VALUE": 2,
+        "INTL_FACTOR_VALUE": 1,
+        "US_FACTOR_MOMENTUM": 1,
+        "EMERGING_MARKETS": 2,
+        "US_BONDS": 4,
+        "REITS": 1,
+        "COMMODITIES_HEDGE": 1,
+    },
+    "SHORT": {
+        "ULTRA_SHORT_TERM": 4,
+        "US_BONDS": 4,
+    },
+}
+
+
+async def select_auto_candidates(
+    bucket_horizon: str, db: AsyncSession
+) -> tuple[list[str], dict[str, int]]:
+    """Pick a diversified candidate shortlist for the given horizon.
+
+    For each bucket in the horizon's allocation plan, ranks ETFs by composite
+    score (cost + sharpe + tracking-error + liquidity) and takes the top-K.
+    Falls back to TER ascending when scoring data is missing.
+
+    Skips blacklisted tickers. Returns (ticker_list, picks_per_bucket).
+    """
+    from app.services import scoring_service
+
+    plan = _BUCKET_ALLOCATION_BY_HORIZON.get(bucket_horizon.upper())
+    if plan is None:
+        plan = _BUCKET_ALLOCATION_BY_HORIZON["LONG"]
+
+    chosen: list[str] = []
+    picks_per_bucket: dict[str, int] = {}
+
+    for bucket_name, k in plan.items():
+        if k <= 0:
+            continue
+        ranked = await scoring_service.rank_within_bucket(bucket_name, db)
+        # Drop blacklisted (defence in depth — universe should already exclude them
+        # but a manual blacklist entry could shadow an active ETF).
+        eligible = [r for r in ranked if not is_blacklisted(r.ticker)[0]]
+        if not eligible:
+            # Fallback: use raw universe order sorted by TER ascending
+            from app.services.universe_service import get_etfs_in_bucket
+            raw = sorted(get_etfs_in_bucket(bucket_name), key=lambda e: e.get("ter", 1.0))
+            eligible_tickers = [
+                e["ticker"] for e in raw if not is_blacklisted(e["ticker"])[0]
+            ][:k]
+            chosen.extend(eligible_tickers)
+            picks_per_bucket[bucket_name] = len(eligible_tickers)
+            continue
+
+        top = [r.ticker for r in eligible[:k]]
+        chosen.extend(top)
+        picks_per_bucket[bucket_name] = len(top)
+
+    return chosen, picks_per_bucket
+
+
+async def auto_select_and_ingest(
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> CandidateIngestResponse:
+    """Convenience: pick candidates for the session's bucket horizon and ingest
+    them into the session. Returns the same shape as ingest_candidates."""
+    from app.services.bucket_service import get_active_bucket
+
+    session = await _get_session(session_id, db, user_id=user_id)
+    if session.status != "DRAFT":
+        raise ValidationError("error.architect_session_wrong_status", {
+            "status": session.status, "expected": "DRAFT",
+        })
+    if session.bucket_id is None:
+        raise ValidationError("error.architect_no_bucket", {"session_id": session_id})
+
+    bucket = await get_active_bucket(session.bucket_id, db)
+    tickers, picks = await select_auto_candidates(bucket.horizon_type, db)
+    logger.info(
+        "architect_auto_selected",
+        session_id=session_id,
+        horizon=bucket.horizon_type,
+        count=len(tickers),
+        picks=picks,
+    )
+    return await ingest_candidates(session_id, tickers, db, user_id=user_id)
 
 
 async def ingest_candidates(
