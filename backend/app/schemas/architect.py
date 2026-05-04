@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 class InvestorProfile(BaseModel):
     goal_description: str = Field(min_length=1, max_length=500)
+    current_capital: float | None = Field(default=None, gt=0)
     target_amount: float | None = Field(default=None, gt=0)
     monthly_deposit: float | None = Field(default=None, gt=0)
     currency: str = Field(default="USD")

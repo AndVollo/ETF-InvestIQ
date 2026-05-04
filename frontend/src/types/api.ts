@@ -410,6 +410,13 @@ export interface ArchitectSessionResponse {
   session_id: number
   bucket_id: number | null
   status: string
+  investor_profile: {
+    goal_description: string
+    current_capital: number | null
+    target_amount: number | null
+    monthly_deposit: number | null
+    currency: string
+  } | null
   shortlist: CandidateDetail[] | null
   final_allocation: AllocationItem[] | null
   rationale: string | null

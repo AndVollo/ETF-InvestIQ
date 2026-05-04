@@ -102,8 +102,9 @@ def _generate_discovery_prompt(
 
 ## Investor Profile
 - Goal: {profile.goal_description}
-- Target amount: {f"{symbol}{profile.target_amount:,.0f}" if profile.target_amount else "Not specified"}
-- Monthly deposit: {f"{symbol}{profile.monthly_deposit:,.0f}" if profile.monthly_deposit else "Not specified"}
+- Current Capital: {f"{symbol}{profile.current_capital:,.0f}" if profile.current_capital else "Not specified"}
+- Target Amount: {f"{symbol}{profile.target_amount:,.0f}" if profile.target_amount else "Not specified"}
+- Monthly Deposit: {f"{symbol}{profile.monthly_deposit:,.0f}" if profile.monthly_deposit else "Not specified"}
 - Bucket horizon: {getattr(bucket, 'horizon_type', 'LONG')}
 - Risk notes: {profile.risk_notes or "None"}
 

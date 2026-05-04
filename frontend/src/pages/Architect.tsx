@@ -38,6 +38,7 @@ export default function Architect() {
   const [bucketId, setBucketId] = useState<number>(buckets[0]?.id ?? 0)
   const [sessionId, setSessionId] = useState<number>(0)
   const [goalDesc, setGoalDesc] = useState('')
+  const [currentCapital, setCurrentCapital] = useState<number | undefined>()
   const [targetAmount, setTargetAmount] = useState<number | undefined>()
   const [monthlyDeposit, setMonthlyDeposit] = useState<number | undefined>()
   const [tickersInput, setTickersInput] = useState('')
@@ -66,6 +67,7 @@ export default function Architect() {
   useEffect(() => {
     if (session?.investor_profile && step > 0) {
       setGoalDesc(session.investor_profile.goal_description)
+      setCurrentCapital(session.investor_profile.current_capital)
       setTargetAmount(session.investor_profile.target_amount)
       setMonthlyDeposit(session.investor_profile.monthly_deposit)
       if (session.bucket_id) setBucketId(session.bucket_id)
@@ -86,6 +88,7 @@ export default function Architect() {
       bucket_id: bucketId,
       investor_profile: {
         goal_description: goalDesc,
+        current_capital: currentCapital,
         target_amount: targetAmount,
         monthly_deposit: monthlyDeposit,
         currency: currency,
@@ -163,6 +166,15 @@ export default function Architect() {
                   </Field>
                   <Field label={t('architect.goal_desc')}>
                     <Input value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
+                  </Field>
+                  <Field label={t('architect.current_capital')}>
+                    <InputGroup prefix={symbol}>
+                      <Input
+                        type="number"
+                        value={currentCapital ?? ''}
+                        onChange={(e) => setCurrentCapital(e.target.value ? Number(e.target.value) : undefined)}
+                      />
+                    </InputGroup>
                   </Field>
                   <Field label={t('architect.target_amount')}>
                     <InputGroup prefix={symbol}>
@@ -429,8 +441,16 @@ export default function Architect() {
                         <div style={{ fontWeight: 500 }}>{session.investor_profile.goal_description}</div>
                       </div>
                       <div>
+                        <div className="text-muted">{t('architect.current_capital')}</div>
+                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.current_capital || 0, currency)}</div>
+                      </div>
+                      <div>
                         <div className="text-muted">{t('architect.target_amount')}</div>
-                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.target_amount || 0, currency)}</div>
+                        <div style={{ fontWeight: 500 }}>{session.investor_profile.target_amount ? formatCurrency(session.investor_profile.target_amount, currency) : t('common.na')}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted">{t('architect.monthly_deposit')}</div>
+                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.monthly_deposit || 0, currency)}</div>
                       </div>
                     </div>
                   </Card.Body>
