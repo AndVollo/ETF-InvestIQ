@@ -369,7 +369,9 @@ function DiscoverTab() {
     setResult(null)
     let parsed: { items?: BulkImportItem[] }
     try {
-      parsed = JSON.parse(pasted)
+      // Attempt to fix common unescaped quotes in Hebrew acronyms (e.g. ארה"ב)
+      const sanitized = pasted.replace(/([א-ת])"([א-ת])/g, '$1\\"$2')
+      parsed = JSON.parse(sanitized)
     } catch {
       setParseError(t('manage_universe.invalid_json'))
       return
@@ -404,19 +406,22 @@ function DiscoverTab() {
               <textarea
                 readOnly
                 value={prompt?.prompt ?? ''}
-                style={{ width: '100%', minHeight: 280, fontFamily: 'monospace', fontSize: 12, padding: 8 }}
+                style={{
+                  width: '100%',
+                  minHeight: 280,
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  padding: 12,
+                  background: 'var(--bg-input)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)',
+                  resize: 'vertical',
+                }}
               />
               <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <Button onClick={copyPrompt}>{t('manage_universe.copy_prompt')}</Button>
-                {prompt?.finviz_screener_url && (
-                  <a href={prompt.finviz_screener_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="secondary">↗ {t('manage_universe.open_finviz')}</Button>
-                  </a>
-                )}
               </div>
-              <p className="text-muted" style={{ fontSize: 12, marginTop: 10, lineHeight: 1.5 }}>
-                {t('manage_universe.finviz_hint')}
-              </p>
             </>
           )}
         </Card.Body>
@@ -432,7 +437,18 @@ function DiscoverTab() {
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
             placeholder='{"items": [{"ticker": "...", ...}]}'
-            style={{ width: '100%', minHeight: 200, fontFamily: 'monospace', fontSize: 12, padding: 8 }}
+            style={{
+              width: '100%',
+              minHeight: 200,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              padding: 12,
+              background: 'var(--bg-input)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-md)',
+              resize: 'vertical',
+            }}
           />
           {parseError && <p style={{ color: 'var(--error, red)', marginTop: 8 }}>{parseError}</p>}
           <div style={{ marginTop: 8 }}>

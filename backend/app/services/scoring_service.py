@@ -57,7 +57,7 @@ class ScoredETF:
     ticker: str
     name: str
     bucket: str
-    ter: float
+    ter: float | None
     aum_b: float
     composite_score: float
     components: ComponentScores
@@ -66,20 +66,27 @@ class ScoredETF:
 
 # ── Pure score computation ────────────────────────────────────────────────────
 
-def _cost_score(ter: float) -> float:
+def _cost_score(ter: float | None) -> float:
     """Higher score = lower cost. Linear normalization on universe TER range."""
+    if ter is None:
+        return NEUTRAL_SCORE
     ter = max(_TER_MIN, min(_TER_MAX, ter))
     return 1.0 - (ter - _TER_MIN) / (_TER_MAX - _TER_MIN)
 
 
-def _liquidity_score(aum_b: float) -> float:
+def _liquidity_score(aum_b: float | None) -> float:
     """Higher score = larger AUM. Log-linear normalization."""
-    if aum_b <= 0:
+    if aum_b is None or aum_b <= 0:
         return 0.0
     log_min = math.log(_AUM_MIN + 1)
     log_max = math.log(_AUM_MAX + 1)
     log_val = math.log(min(aum_b, _AUM_MAX) + 1)
     return (log_val - log_min) / (log_max - log_min)
+
+
+def _tracking_error_score_proxy(ter: float | None) -> float:
+    """TER proxy for tracking error (lower TER → lower tracking error → higher score)."""
+    return _cost_score(ter)
 
 
 def _sharpe_score_from_prices(prices: list[float], rf_rate: float = 0.045) -> float | None:
@@ -120,7 +127,7 @@ def _tracking_error_score_proxy(ter: float) -> float:
 
 
 def _build_components(
-    ter: float, aum_b: float, prices: list[float] | None, rf_rate: float
+    ter: float | None, aum_b: float | None, prices: list[float] | None, rf_rate: float
 ) -> ComponentScores:
     cost = _cost_score(ter)
     liquidity = _liquidity_score(aum_b)
@@ -274,6 +281,8 @@ async def rank_within_bucket(
     cache_map = {row.ticker: row for row in result.scalars().all()}
 
     results: list[ScoredETF] = []
+    logger.info(f"ranking_bucket_start: {bucket_name}, found {len(etfs)} etfs, {len(cache_map)} in cache")
+    
     for etf in etfs:
         ticker = etf["ticker"]
         row = cache_map.get(ticker)
@@ -281,30 +290,35 @@ async def rank_within_bucket(
         # Check if cache is valid
         if row and _utc(row.expires_at) >= datetime.now(timezone.utc):
             comp = ComponentScores(
-                cost=row.cost_score or NEUTRAL_SCORE,
-                sharpe_3y=row.sharpe_score or NEUTRAL_SCORE,
-                tracking_error=row.tracking_error_score or NEUTRAL_SCORE,
-                liquidity_aum=row.liquidity_score or NEUTRAL_SCORE,
+                cost=row.cost_score if row.cost_score is not None else NEUTRAL_SCORE,
+                sharpe_3y=row.sharpe_score if row.sharpe_score is not None else NEUTRAL_SCORE,
+                tracking_error=row.tracking_error_score if row.tracking_error_score is not None else NEUTRAL_SCORE,
+                liquidity_aum=row.liquidity_score if row.liquidity_score is not None else NEUTRAL_SCORE,
                 sharpe_computed=bool(row.sharpe_score),
             )
             results.append(ScoredETF(
                 ticker=ticker,
-                name=etf["name"],
-                bucket=etf["bucket"],
-                ter=etf["ter"],
+                name=etf.get("name", ticker),
+                bucket=etf.get("bucket", bucket_name),
+                ter=etf.get("ter"),
                 aum_b=etf.get("aum_b", 0.0),
                 composite_score=comp.composite,
                 components=comp,
             ))
         else:
             # Recalculate if missing or expired
-            scored = await calculate_composite_score(ticker, db, rf_rate, use_cache=True)
-            if scored:
-                results.append(scored)
+            try:
+                scored = await calculate_composite_score(ticker, db, rf_rate, use_cache=True)
+                if scored:
+                    results.append(scored)
+            except Exception as e:
+                logger.error(f"error_calculating_score: {ticker}", error=str(e))
 
     results.sort(key=lambda x: x.composite_score, reverse=True)
     for i, s in enumerate(results, start=1):
         s.rank = i
+    
+    logger.info(f"ranking_bucket_done: {bucket_name}, ranked {len(results)} etfs")
     return results
 
 

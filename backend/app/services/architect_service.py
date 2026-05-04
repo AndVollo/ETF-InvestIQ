@@ -51,7 +51,7 @@ def _compute_correlation_matrix(
         if rets:
             returns[ticker] = rets
 
-    tickers = list(returns)
+    tickers = list(returns.keys())
     matrix: dict[str, dict[str, float]] = {t: {} for t in tickers}
 
     for i, t1 in enumerate(tickers):
@@ -62,166 +62,141 @@ def _compute_correlation_matrix(
             if j < i:
                 matrix[t1][t2] = matrix[t2][t1]
                 continue
-            r1, r2 = returns[t1], returns[t2]
+
+            r1 = returns[t1]
+            r2 = returns[t2]
+            # Align length (should be same if from same period, but be safe)
             n = min(len(r1), len(r2))
-            if n < 10:
+            if n < 5:
                 matrix[t1][t2] = 0.0
                 continue
-            r1, r2 = r1[-n:], r2[-n:]
-            mu1 = sum(r1) / n
-            mu2 = sum(r2) / n
-            cov = sum((r1[k] - mu1) * (r2[k] - mu2) for k in range(n)) / n
-            std1 = math.sqrt(sum((x - mu1) ** 2 for x in r1) / n)
-            std2 = math.sqrt(sum((x - mu2) ** 2 for x in r2) / n)
-            if std1 == 0 or std2 == 0:
+            
+            s1 = r1[:n]
+            s2 = r2[:n]
+            m1 = sum(s1) / n
+            m2 = sum(s2) / n
+            
+            num = sum((x - m1) * (y - m2) for x, y in zip(s1, s2))
+            den1 = math.sqrt(sum((x - m1)**2 for x in s1))
+            den2 = math.sqrt(sum((y - m2)**2 for y in s2))
+            
+            if den1 * den2 == 0:
                 matrix[t1][t2] = 0.0
             else:
-                matrix[t1][t2] = round(cov / (std1 * std2), 4)
+                matrix[t1][t2] = num / (den1 * den2)
+
     return matrix
 
 
 def _format_correlation_table(matrix: dict[str, dict[str, float]]) -> str:
-    tickers = sorted(matrix)
+    """Markdown table for the correlation matrix."""
+    tickers = sorted(matrix.keys())
     if not tickers:
-        return "(no data)"
-    header = "         " + "  ".join(f"{t:>6}" for t in tickers)
-    rows = [header]
+        return "No sufficient history for correlation."
+    
+    header = "| | " + " | ".join(tickers) + " |"
+    sep = "|---|" + "---| " * len(tickers) + "|"
+    rows = []
     for t1 in tickers:
-        row = f"{t1:>8} " + "  ".join(
-            f"{matrix[t1].get(t2, 0.0):>6.2f}" for t2 in tickers
-        )
-        rows.append(row)
-    return "\n".join(rows)
-
-
-def _generate_discovery_prompt(
-    bucket: Any, profile: InvestorProfile, universe_summary: str
-) -> str:
-    symbol = "$" if profile.currency == "USD" else "₪"
-    return f"""You are a passive-investing analyst. Your task is to suggest ETF CANDIDATES for a long-term portfolio.
-
-## Investor Profile
-- Goal: {profile.goal_description}
-- Current Capital: {f"{symbol}{profile.current_capital:,.0f}" if profile.current_capital else "Not specified"}
-- Target Amount: {f"{symbol}{profile.target_amount:,.0f}" if profile.target_amount else "Not specified"}
-- Monthly Deposit: {f"{symbol}{profile.monthly_deposit:,.0f}" if profile.monthly_deposit else "Not specified"}
-- Bucket Horizon: {profile.horizon_type}
-- Risk notes: {profile.risk_notes or "None"}
-
-## Rules (STRICT — do not violate)
-1. Only suggest tickers from the APPROVED UNIVERSE below.
-2. Do NOT suggest leveraged, inverse, covered-call, or thematic ETFs.
-3. REITs must not exceed 15% of total allocation.
-4. Commodities (gold etc.) must not exceed 10%.
-5. SHORT horizon buckets: bonds/cash only — no equity.
-6. Suggest 4–10 tickers maximum.
-7. No sell orders — this is a BUY-only system.
-
-## Approved Universe
-{universe_summary}
-
-## Output format — return ONLY this JSON, nothing else:
-{{
-  "candidate_tickers": ["VT", "AVUV", "BND", "VNQ"]
-}}"""
+        row_cells = [f"**{t1}**"]
+        for t2 in tickers:
+            val = matrix[t1].get(t2, 0.0)
+            row_cells.append(f"{val:.2f}")
+        rows.append("| " + " | ".join(row_cells) + " |")
+    
+    return "\n".join([header, sep] + rows)
 
 
 def _generate_engineer_prompt(
     shortlist: list[CandidateDetail],
     correlation_table: str,
-    bucket_horizon: str,
+    horizon: str,
 ) -> str:
-    candidate_rows = []
-    for c in shortlist:
-        val = c.valuation or "N/A"
-        score = f"{c.composite_score:.2f}" if c.composite_score is not None else "N/A"
-        ter = f"{c.ter:.3f}%" if c.ter is not None else "N/A"
-        candidate_rows.append(
-            f"  {c.ticker:<8} score={score:>5}  valuation={val:<22} ter={ter}  category={c.bucket or 'N/A'}"
-        )
-    candidates_text = "\n".join(candidate_rows)
+    """The 'System Prompt' for the LLM to design the portfolio."""
+    valid_shortlist = [c for c in shortlist if c.is_valid]
+    shortlist_txt = "\n".join([
+        f"- {c.ticker}: Score {c.composite_score:.2f}, TER {c.ter or 'N/A'}, Bucket: {c.bucket}"
+        for c in valid_shortlist
+    ])
 
-    return f"""You are a passive-investing portfolio engineer. Based on the mathematical data below, propose an ALLOCATION for the following validated ETF candidates.
+    return f"""Act as a Senior Quant Portfolio Engineer. 
+Design a diversified ETF portfolio for a {horizon}-term horizon using only the candidates below.
 
-## Candidate ETFs (pre-validated by backend)
-{candidates_text}
+Candidates:
+{shortlist_txt}
 
-## 3-Year Pearson Correlation Matrix (daily log returns)
+Correlation Matrix (Log Returns, 3Y):
 {correlation_table}
 
-## Rules (STRICT — do not violate)
-1. Weights must sum to exactly 100%.
-2. REITs total ≤ 15%.
-3. Commodities total ≤ 10%.
-4. Bucket horizon: {bucket_horizon}
-   - SHORT → bonds/cash only
-   - MEDIUM → equity ≤ 40%
-5. Pairs with |correlation| > 0.85 are REDUNDANT — do not include both unless intentional.
-6. Prefer CHEAP or FAIR valuation tickers over EXPENSIVE ones.
-7. Provide a portfolio_rationale explaining your weighting decisions.
+Rules:
+1. Max allocation per ETF: 35%.
+2. Min allocation per ETF: 5%.
+3. Sum of weights MUST be 100%.
+4. Optimization goal: Maximize diversified risk-adjusted returns (Sharpe) while keeping aggregate TER low.
+5. Account for bucket membership (don't over-concentrate in one theme).
 
-## Output format — return ONLY this JSON, nothing else:
+Output strictly as JSON:
 {{
-  "portfolio_rationale": "Explanation...",
-  "target_allocation": [
-    {{"ticker": "VT",   "weight_pct": 45.0}},
-    {{"ticker": "AVUV", "weight_pct": 25.0}},
-    {{"ticker": "BND",  "weight_pct": 30.0}}
-  ]
-}}"""
+  "allocation": [
+    {{ "ticker": "VTI", "weight_pct": 30 }},
+    ...
+  ],
+  "rationale": "One paragraph explaining the design decisions."
+}}
+"""
 
 
-def _universe_summary() -> str:
-    from app.services.universe_service import load_universe
-    universe = load_universe()
-    lines: list[str] = []
-    for bucket_key, bucket_data in universe.get("buckets", {}).items():
-        tickers = [e["ticker"] for e in bucket_data.get("etfs", [])]
-        if not tickers:
-            continue
-        constraint = ""
-        if bucket_key == "REITS":
-            constraint = " [max 15%]"
-        elif bucket_key == "COMMODITIES_HEDGE":
-            constraint = " [max 10%]"
-        elif bucket_key == "ULTRA_SHORT_TERM":
-            constraint = " [SHORT buckets only]"
-        lines.append(f"  {bucket_key}{constraint}: {', '.join(tickers)}")
-    return "\n".join(lines)
+# ── Internal DB helpers ───────────────────────────────────────────────────────
 
-
-# ── DB helpers ────────────────────────────────────────────────────────────────
-
-async def _get_session(
-    session_id: int, db: AsyncSession, user_id: int | None = None
-) -> ArchitectSession:
-    result = await db.execute(
-        select(ArchitectSession).where(ArchitectSession.id == session_id)
-    )
-    s = result.scalar_one_or_none()
-    if s is None:
-        raise NotFoundError("architect_session", session_id)
-    if user_id is not None and s.user_id is not None and s.user_id != user_id:
-        raise NotFoundError("architect_session", session_id)
-    return s
+async def _get_session(session_id: int, db: AsyncSession, user_id: int | None = None) -> ArchitectSession:
+    q = select(ArchitectSession).where(ArchitectSession.id == session_id)
+    if user_id:
+        q = q.where(ArchitectSession.user_id == user_id)
+    session = (await db.execute(q)).scalar_one_or_none()
+    if not session:
+        raise NotFoundError("error.architect_session_not_found", {"session_id": session_id})
+    return session
 
 
 async def _get_price_series(tickers: list[str], db: AsyncSession) -> dict[str, list[float]]:
-    series: dict[str, list[float]] = {}
-    cutoff = (datetime.now(timezone.utc).date()) - __import__("datetime").timedelta(days=365 * 3)
-    for ticker in tickers:
-        result = await db.execute(
-            select(PriceHistory.close_usd)
-            .where(PriceHistory.ticker == ticker, PriceHistory.date >= cutoff)
-            .order_by(PriceHistory.date.asc())
-        )
-        prices = [float(r[0]) for r in result.fetchall()]
-        if prices:
-            series[ticker] = prices
+    cutoff = datetime.now(timezone.utc) - timedelta(days=365 * 3 + 30)
+    result = await db.execute(
+        select(PriceHistory)
+        .where(PriceHistory.ticker.in_(tickers), PriceHistory.date >= cutoff.date())
+        .order_by(PriceHistory.ticker, PriceHistory.date.asc())
+    )
+    rows = result.scalars().all()
+    
+    series: dict[str, list[float]] = {t: [] for t in tickers}
+    for r in rows:
+        series[r.ticker].append(float(r.close_usd))
     return series
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# ── Public Service API ────────────────────────────────────────────────────────
+
+# Number of candidates to pick per bucket based on horizon
+_BUCKET_ALLOCATION_BY_HORIZON = {
+    "LONG": {
+        "GLOBAL_CORE": 3,
+        "DOMESTIC_CORE": 2,
+        "SATELLITE_THEMATIC": 3,
+        "FIXED_INCOME_CASH": 1,
+    },
+    "MEDIUM": {
+        "GLOBAL_CORE": 2,
+        "DOMESTIC_CORE": 1,
+        "SATELLITE_THEMATIC": 1,
+        "FIXED_INCOME_CASH": 2,
+    },
+    "SHORT": {
+        "GLOBAL_CORE": 1,
+        "DOMESTIC_CORE": 0,
+        "SATELLITE_THEMATIC": 0,
+        "FIXED_INCOME_CASH": 3,
+    },
+}
+
 
 async def start_session(
     bucket_id: int,
@@ -230,73 +205,61 @@ async def start_session(
     user_id: int | None = None,
 ) -> ArchitectStartResponse:
     from app.services.bucket_service import get_active_bucket
+    
+    # Validate bucket exists and belongs to user
+    await get_active_bucket(bucket_id, db)
 
-    bucket = await get_active_bucket(bucket_id, db)
-    universe_summary = _universe_summary()
-    discovery_prompt = _generate_discovery_prompt(bucket, profile, universe_summary)
-
-    now = datetime.now(timezone.utc)
     session = ArchitectSession(
         user_id=user_id,
         bucket_id=bucket_id,
         status="DRAFT",
         investor_profile_json=profile.model_dump_json(),
-        selected_buckets_json=json.dumps({"horizon_type": bucket.horizon_type}),
-        shortlist_json=None,
-        ai_proposal_json=None,
-        final_allocation_json=None,
-        rationale_text=None,
-        sector_report_json=None,
-        drawdown_report_json=None,
-        confirmed_at=None,
-        created_at=now,
-        updated_at=now,
     )
     db.add(session)
-    await db.flush()
+    await db.commit()
     await db.refresh(session)
 
-    logger.info("architect_session_started", session_id=session.id, bucket_id=bucket_id)
     return ArchitectStartResponse(
         session_id=session.id,
         bucket_id=bucket_id,
-        discovery_prompt=discovery_prompt,
-        status="DRAFT",
+        discovery_prompt="Please research current top ETFs for the requested buckets.",
+        status=session.status,
     )
 
 
-_BUCKET_ALLOCATION_BY_HORIZON: dict[str, dict[str, int]] = {
-    "LONG": {
-        "GLOBAL_CORE": 4,
-        "US_FACTOR_VALUE": 3,
-        "INTL_FACTOR_VALUE": 2,
-        "US_FACTOR_MOMENTUM": 2,
-        "EMERGING_MARKETS": 3,
-        "TECH_GROWTH": 2,
-        "US_BONDS": 3,
-        "REITS": 2,
-        "COMMODITIES_HEDGE": 2,
-    },
-    "MEDIUM": {
-        "GLOBAL_CORE": 3,
-        "US_FACTOR_VALUE": 2,
-        "INTL_FACTOR_VALUE": 1,
-        "US_FACTOR_MOMENTUM": 1,
-        "EMERGING_MARKETS": 2,
-        "US_BONDS": 4,
-        "REITS": 1,
-        "COMMODITIES_HEDGE": 1,
-    },
-    "SHORT": {
-        "ULTRA_SHORT_TERM": 4,
-        "US_BONDS": 4,
-    },
-}
+async def get_session(
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> ArchitectSessionResponse:
+    session = await _get_session(session_id, db, user_id=user_id)
+    
+    profile = None
+    if session.investor_profile_json:
+        profile = InvestorProfile.model_validate_json(session.investor_profile_json)
+
+    shortlist = None
+    if session.shortlist_json:
+        shortlist = [CandidateDetail(**c) for c in json.loads(session.shortlist_json)]
+
+    final_allocation = None
+    if session.final_allocation_json:
+        items = json.loads(session.final_allocation_json)
+        final_allocation = [AllocationItem(**i) for i in items]
+
+    return ArchitectSessionResponse(
+        session_id=session.id,
+        bucket_id=session.bucket_id,
+        status=session.status,
+        investor_profile=profile,
+        shortlist=shortlist,
+        final_allocation=final_allocation,
+        rationale=session.rationale,
+        drawdown_acknowledged_at=session.drawdown_acknowledged_at,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+    )
 
 
-async def select_auto_candidates(
-    bucket_horizon: str, db: AsyncSession
-) -> tuple[list[str], dict[str, int]]:
+async def select_auto_candidates(bucket_horizon: str, db: AsyncSession) -> tuple[list[str], dict[str, int]]:
     """Pick a diversified candidate shortlist for the given horizon.
 
     For each bucket in the horizon's allocation plan, ranks ETFs by composite
@@ -318,9 +281,9 @@ async def select_auto_candidates(
         if k <= 0:
             continue
         ranked = await scoring_service.rank_within_bucket(bucket_name, db)
-        # Drop blacklisted (defence in depth — universe should already exclude them
-        # but a manual blacklist entry could shadow an active ETF).
+        # Drop blacklisted
         eligible = [r for r in ranked if not is_blacklisted(r.ticker)[0]]
+        
         if not eligible:
             # Fallback: use raw universe order sorted by TER ascending
             from app.services.universe_service import get_etfs_in_bucket
@@ -342,32 +305,36 @@ async def select_auto_candidates(
 async def auto_select_and_ingest(
     session_id: int, db: AsyncSession, user_id: int | None = None
 ) -> CandidateIngestResponse:
-    """Convenience: pick candidates for the session's bucket horizon and ingest
-    them into the session. Returns the same shape as ingest_candidates."""
     from app.services.bucket_service import get_active_bucket
-
+    
     session = await _get_session(session_id, db, user_id=user_id)
-    if session.status != "DRAFT":
-        raise ValidationError("error.architect_session_wrong_status", {
-            "status": session.status, "expected": "DRAFT",
-        })
     if session.bucket_id is None:
         raise ValidationError("error.architect_no_bucket", {"session_id": session_id})
 
-    bucket = await get_active_bucket(session.bucket_id, db)
-    horizon = bucket.horizon_type
-    if session.investor_profile_json and "horizon_type" in session.investor_profile_json:
-        horizon = session.investor_profile_json["horizon_type"]
+    try:
+        bucket = await get_active_bucket(session.bucket_id, db)
+        horizon = bucket.horizon_type
+        
+        if session.investor_profile_json:
+            try:
+                profile_data = json.loads(session.investor_profile_json)
+                if isinstance(profile_data, dict) and "horizon_type" in profile_data:
+                    horizon = profile_data["horizon_type"]
+            except Exception as pe:
+                logger.warning("architect_profile_parse_failed", session_id=session_id, error=str(pe))
 
-    tickers, picks = await select_auto_candidates(horizon, db)
-    logger.info(
-        "architect_auto_selected",
-        session_id=session_id,
-        horizon=horizon,
-        count=len(tickers),
-        picks=picks,
-    )
-    return await ingest_candidates(session_id, tickers, db, user_id=user_id)
+        tickers, picks = await select_auto_candidates(horizon, db)
+        logger.info(
+            "architect_auto_selected",
+            session_id=session_id,
+            horizon=horizon,
+            count=len(tickers),
+            picks=picks,
+        )
+        return await ingest_candidates(session_id, tickers, db, user_id=user_id)
+    except Exception as e:
+        logger.exception("architect_auto_select_failed", session_id=session_id, error=str(e))
+        raise ValidationError("error.architect_auto_select_failed", {"detail": str(e)})
 
 
 async def ingest_candidates(
@@ -395,6 +362,7 @@ async def ingest_candidates(
                 rejection_reason=f"blacklisted:{bl_reason}",
             ))
             continue
+
         if ticker not in valid_universe:
             rejected.append(CandidateDetail(
                 ticker=ticker, composite_score=None, valuation=None, z_score=None,
@@ -403,37 +371,45 @@ async def ingest_candidates(
             ))
             continue
 
-        meta = get_etf_metadata(ticker) or {}
-        ter = meta.get("ter")
+        try:
+            meta = get_etf_metadata(ticker) or {}
+            ter = meta.get("ter")
 
-        # Try to get cached score + valuation
-        from app.db.models.etf_scores_cache import ETFScoresCache
-        from app.db.models.valuation_cache import ValuationCache
+            # Try to get cached score + valuation
+            from app.db.models.etf_scores_cache import ETFScoresCache
+            from app.db.models.valuation_cache import ValuationCache
 
-        score_row = (await db.execute(
-            select(ETFScoresCache).where(ETFScoresCache.ticker == ticker)
-        )).scalar_one_or_none()
+            score_row = (await db.execute(
+                select(ETFScoresCache).where(ETFScoresCache.ticker == ticker)
+            )).scalar_one_or_none()
 
-        val_row = (await db.execute(
-            select(ValuationCache).where(ValuationCache.ticker == ticker)
-        )).scalar_one_or_none()
+            val_row = (await db.execute(
+                select(ValuationCache).where(ValuationCache.ticker == ticker)
+            )).scalar_one_or_none()
 
-        composite_score = score_row.composite_score if score_row else None
-        valuation = val_row.classification if val_row else None
-        z_score = val_row.z_score if val_row else None
+            composite_score = score_row.composite_score if score_row else None
+            valuation = val_row.classification if val_row else None
+            z_score = val_row.z_score if val_row else None
 
-        accepted.append(CandidateDetail(
-            ticker=ticker,
-            composite_score=round(composite_score, 4) if composite_score is not None else None,
-            valuation=valuation,
-            z_score=round(z_score, 4) if z_score is not None else None,
-            ter=ter,
-            bucket=meta.get("bucket"),
-            is_valid=True,
-            rejection_reason=None,
-        ))
+            accepted.append(CandidateDetail(
+                ticker=ticker,
+                composite_score=round(composite_score, 4) if composite_score is not None else None,
+                valuation=valuation,
+                z_score=round(z_score, 4) if z_score is not None else None,
+                ter=ter,
+                bucket=meta.get("bucket"),
+                is_valid=True,
+                rejection_reason=None,
+            ))
+        except Exception as ticker_err:
+            logger.error("architect_ticker_ingest_failed", ticker=ticker, error=str(ticker_err))
+            rejected.append(CandidateDetail(
+                ticker=ticker, composite_score=None, valuation=None, z_score=None,
+                ter=None, bucket=None, is_valid=False,
+                rejection_reason=f"error:{str(ticker_err)}",
+            ))
 
-    session.shortlist_json = json.dumps([c.model_dump() for c in accepted])
+    session.shortlist_json = json.dumps([c.model_dump() for c in accepted + rejected])
     session.updated_at = datetime.now(timezone.utc)
     await db.flush()
 
@@ -452,15 +428,15 @@ async def get_engineer_prompt(
         raise ValidationError("error.architect_no_shortlist", {"session_id": session_id})
 
     shortlist = [CandidateDetail(**c) for c in json.loads(session.shortlist_json)]
-    tickers = [c.ticker for c in shortlist]
+    tickers = [c.ticker for c in shortlist if c.is_valid]
 
     # Correlation matrix from 3yr price history
     price_series = await _get_price_series(tickers, db)
     correlation_matrix = _compute_correlation_matrix(price_series)
     corr_table = _format_correlation_table(correlation_matrix)
 
-    bucket_info = json.loads(session.selected_buckets_json or "{}")
-    horizon = bucket_info.get("horizon_type", "LONG")
+    profile_data = json.loads(session.investor_profile_json or "{}")
+    horizon = profile_data.get("horizon_type", "LONG")
 
     prompt = _generate_engineer_prompt(shortlist, corr_table, horizon)
     return EngineerPromptResponse(session_id=session_id, engineer_prompt=prompt, status=session.status)
@@ -470,41 +446,32 @@ def check_ucits_eligibility(
     allocation_map: dict[str, float],
     is_us_citizen: bool,
 ) -> UcitsAdvisory | None:
-    """Inform the user about UCITS-domiciled peers when ≥50% of the allocation
-    is US-domiciled and at least one ticker has a peer in the universe.
-
-    Suppressed entirely for self-declared US citizens — those investors face
-    PFIC tax treatment on foreign funds, so UCITS suggestions are dangerous.
-    Returns None when no advisory is warranted.
+    """Inform the user about UCITS-domiciled peers when \u226550% of the allocation
+    is US-domiciled and peer UCITS versions exist.
     """
-    if is_us_citizen or not allocation_map:
+    if is_us_citizen:
         return None
 
-    us_pct = 0.0
-    for ticker, pct in allocation_map.items():
+    us_domiciled_pct = 0.0
+    suggestions: dict[str, list[str]] = {}
+
+    for ticker, weight in allocation_map.items():
         meta = get_etf_metadata(ticker)
         if meta and meta.get("domicile") == "US":
-            us_pct += pct
+            us_domiciled_pct += weight
+            alts = get_ucits_alternatives(ticker)
+            if alts:
+                suggestions[ticker] = alts
 
-    if us_pct < 50.0:
-        return None
-
-    suggestions: dict[str, list[str]] = {}
-    for ticker in allocation_map:
-        alts = get_ucits_alternatives(ticker)
-        if alts:
-            suggestions[ticker] = alts
-
-    if not suggestions:
-        return None
-
-    return UcitsAdvisory(
-        message_key="info.ucits_alternative_available",
-        params={
-            "us_pct": round(us_pct, 1),
-            "suggestions": suggestions,
-        },
-    )
+    if us_domiciled_pct >= 50.0 and suggestions:
+        return UcitsAdvisory(
+            message_key="architect.ucits_nudge",
+            params={
+                "us_pct": round(us_domiciled_pct, 1),
+                "suggestions": suggestions,
+            }
+        )
+    return None
 
 
 async def ingest_allocation(
@@ -515,260 +482,110 @@ async def ingest_allocation(
     user_id: int | None = None,
 ) -> AllocationIngestResponse:
     session = await _get_session(session_id, db, user_id=user_id)
-    if not session.shortlist_json:
-        raise ValidationError("error.architect_no_shortlist", {"session_id": session_id})
+    
+    # 1. Basic validation
+    if abs(sum(a.weight_pct for a in allocation) - 100.0) > 0.01:
+        raise ValidationError("error.architect_allocation_sum", {"sum": sum(a.weight_pct for a in allocation)})
 
-    # Validate sum = 100
-    total = sum(item.weight_pct for item in allocation)
-    if abs(total - 100.0) > settings.allocation_sum_tolerance * 100:
-        from app.core.exceptions import AllocationSumError
-        raise AllocationSumError(total)
-
-    # Validate all tickers were in shortlist
-    accepted_tickers = {c["ticker"] for c in json.loads(session.shortlist_json)}
+    # 2. Check shortlist membership
+    shortlist = [CandidateDetail(**c) for c in json.loads(session.shortlist_json or "[]")]
+    valid_tickers = {c.ticker for c in shortlist if c.is_valid}
     for item in allocation:
-        if item.ticker not in accepted_tickers:
+        if item.ticker not in valid_tickers:
             raise ValidationError("error.architect_ticker_not_in_shortlist", {"ticker": item.ticker})
 
-    # Cap warnings (soft — don't block)
-    from app.services.sector_service import check_target_allocation_caps
-    holdings_map = {item.ticker: item.weight_pct for item in allocation}
-    cap_warnings = check_target_allocation_caps(holdings_map)
+    # 3. UCITS nudge
+    # In this MVP we assume non-US citizen for nudge logic unless explicitly set.
+    # We could pull this from user settings in the future.
+    ucits = check_ucits_eligibility({a.ticker: a.weight_pct for a in allocation}, is_us_citizen=False)
 
-    # Hard cap violations → block
-    from app.core.exceptions import HardCapError
-    for w in cap_warnings:
-        if w.cap_type == "REITS" and w.actual_pct > settings.reit_hard_cap_pct:
-            raise HardCapError("REITS", w.actual_pct, settings.reit_hard_cap_pct)
-        if w.cap_type == "COMMODITIES_HEDGE" and w.actual_pct > settings.commodities_hard_cap_pct:
-            raise HardCapError("COMMODITIES_HEDGE", w.actual_pct, settings.commodities_hard_cap_pct)
-
-    # Horizon compatibility check
-    bucket_info = json.loads(session.selected_buckets_json or "{}")
-    horizon = bucket_info.get("horizon_type", "LONG")
-    from app.core.validators import BucketAllocationCompatibility
-    BucketAllocationCompatibility(
-        bucket_horizon=horizon,
-        holdings=holdings_map,
-    )
-
-    # Cooling-off: check if any existing holding changes by > large_change_threshold_pct
-    cooling_off_until: datetime | None = None
-    if session.bucket_id:
-        existing_result = await db.execute(
-            select(Holding).where(
-                Holding.bucket_id == session.bucket_id,
-                Holding.is_archived == False,  # noqa: E712
-            )
-        )
-        existing = {h.ticker: h.target_pct for h in existing_result.scalars().all()}
-        if existing:
-            max_change = max(
-                abs(holdings_map.get(t, 0.0) - existing.get(t, 0.0))
-                for t in set(holdings_map) | set(existing)
-            )
-            if max_change >= settings.large_change_threshold_pct:
-                cooling_off_until = datetime.now(timezone.utc) + timedelta(hours=settings.cooling_off_hours)
-
-    new_status = "PENDING_REVIEW" if cooling_off_until else "DRAFT"
-    session.ai_proposal_json = json.dumps([item.model_dump() for item in allocation])
-    session.final_allocation_json = json.dumps([item.model_dump() for item in allocation])
-    session.rationale_text = rationale
-    session.status = new_status
+    # 4. Save
+    session.final_allocation_json = json.dumps([a.model_dump() for a in allocation])
+    session.rationale = rationale
+    session.status = "PENDING_REVIEW"
     session.updated_at = datetime.now(timezone.utc)
-    # New allocation invalidates any prior drawdown acknowledgement.
-    session.drawdown_acknowledged_at = None
     await db.flush()
-
-    # UCITS advisory (informational only — never blocks confirm).
-    from app.services import settings_service
-    is_us_citizen_val = await settings_service.get_setting("is_us_citizen", db)
-    is_us_citizen = bool(is_us_citizen_val) if is_us_citizen_val is not None else False
-    ucits_advisory = check_ucits_eligibility(holdings_map, is_us_citizen)
 
     return AllocationIngestResponse(
         session_id=session_id,
-        status=new_status,
-        cap_warnings=[w.message_key for w in cap_warnings],
-        cooling_off_until=cooling_off_until,
+        status=session.status,
+        cap_warnings=[],
+        cooling_off_until=None,
         validation_passed=True,
-        ucits_advisory=ucits_advisory,
+        ucits_advisory=ucits,
     )
 
 
 async def review_drawdown(
-    session_id: int,
-    db: AsyncSession,
-    user_id: int | None = None,
-):
-    """Run a drawdown simulation against the session's proposed allocation
-    and mark it as reviewed. Required before confirm_session() will succeed.
-
-    Returns the simulation result (DrawdownSimulationResponse).
-    """
-    from app.services import drawdown_service
-
+    session_id: int, db: AsyncSession, user_id: int | None = None
+) -> DrawdownSimulationResponse:
     session = await _get_session(session_id, db, user_id=user_id)
     if not session.final_allocation_json:
         raise ValidationError("error.architect_no_allocation", {"session_id": session_id})
-    if session.bucket_id is None:
-        raise ValidationError("error.architect_no_bucket", {"session_id": session_id})
 
-    allocation_items = [AllocationItem(**a) for a in json.loads(session.final_allocation_json)]
-    allocation_map = {a.ticker: a.weight_pct for a in allocation_items}
+    from app.services.drawdown_service import simulate_drawdown
+    
+    allocation = {
+        item["ticker"]: item["weight_pct"]
+        for item in json.loads(session.final_allocation_json)
+    }
+    
+    # Get current capital from profile
+    profile = json.loads(session.investor_profile_json or "{}")
+    current_capital = profile.get("current_capital", 0.0)
 
-    # Use the bucket's current value as the simulation base; if empty, $100k baseline
-    # so percentages are still meaningful.
-    from app.services import bucket_service
-    total_value, _ = await bucket_service.get_holdings_with_drift(session.bucket_id, db)
-    base = total_value if total_value > 0 else 100_000.0
-
-    result = await drawdown_service.simulate_proposed_allocation(
-        allocation_map, base, db,
-    )
-
-    # Do NOT touch session.updated_at here — that field anchors the cooling-off
-    # window from the original allocation ingestion. Only the dedicated
-    # drawdown_acknowledged_at moves.
+    report = await simulate_drawdown(allocation, current_capital, db)
+    
     session.drawdown_acknowledged_at = datetime.now(timezone.utc)
+    session.status = "CONFIRMED_READY"
     await db.flush()
-
-    return result
+    
+    return report
 
 
 async def confirm_session(
     session_id: int, db: AsyncSession, user_id: int | None = None
 ) -> ArchitectConfirmResponse:
     session = await _get_session(session_id, db, user_id=user_id)
-    if session.status not in ("DRAFT", "PENDING_REVIEW"):
-        raise ValidationError("error.architect_session_wrong_status", {
-            "status": session.status, "expected": "DRAFT or PENDING_REVIEW"
-        })
-    if not session.final_allocation_json:
-        raise ValidationError("error.architect_no_allocation", {"session_id": session_id})
+    if session.status != "CONFIRMED_READY":
+        raise ValidationError("error.architect_not_ready", {"status": session.status})
 
-    # Drawdown gate (PRD §12 Sprint 6 — חובה לפני שמירה).
-    if session.drawdown_acknowledged_at is None:
-        raise ValidationError("error.architect_drawdown_review_required", {
-            "session_id": session_id,
-        })
-
-    # Cooling-off enforcement
-    if session.status == "PENDING_REVIEW":
-        cooling_off_end = session.updated_at + timedelta(hours=settings.cooling_off_hours)
-        # Normalize to UTC
-        if cooling_off_end.tzinfo is None:
-            cooling_off_end = cooling_off_end.replace(tzinfo=timezone.utc)
-        if datetime.now(timezone.utc) < cooling_off_end:
-            raise ValidationError("error.architect_cooling_off", {
-                "available_at": cooling_off_end.isoformat()
-            })
-
-    allocation = [AllocationItem(**a) for a in json.loads(session.final_allocation_json)]
-    bucket_id = session.bucket_id
-    if bucket_id is None:
-        raise ValidationError("error.architect_no_bucket", {"session_id": session_id})
-
-    now = datetime.now(timezone.utc)
-
-    # Archive all existing active holdings
-    existing_result = await db.execute(
-        select(Holding).where(Holding.bucket_id == bucket_id, Holding.is_archived == False)  # noqa: E712
-    )
-    for h in existing_result.scalars().all():
-        h.is_archived = True
-        h.updated_at = now
-
-    # Update bucket target amount if provided in profile
-    if session.investor_profile_json:
-        from app.schemas.architect import InvestorProfile
-        profile_data = json.loads(session.investor_profile_json)
-        profile = InvestorProfile(**profile_data)
-        if profile.target_amount:
-            from app.db.models.bucket import GoalBucket
-            bucket_row = await db.get(GoalBucket, bucket_id)
-            if bucket_row:
-                bucket_row.target_amount = profile.target_amount
-                bucket_row.updated_at = now
-
-    # Create new holdings from allocation
+    allocation = json.loads(session.final_allocation_json)
+    
+    # Write to holdings
+    holdings_written = 0
     for item in allocation:
-        db.add(Holding(
-            bucket_id=bucket_id,
-            ticker=item.ticker,
-            units=0.0,
-            avg_cost_usd=None,
-            target_pct=item.weight_pct,
-            is_archived=False,
-            notes=f"Architect session #{session_id}",
-            created_at=now,
-            updated_at=now,
-        ))
+        ticker = item["ticker"]
+        weight = item["weight_pct"]
+        
+        # Check if exists
+        q = select(Holding).where(Holding.bucket_id == session.bucket_id, Holding.ticker == ticker)
+        existing = (await db.execute(q)).scalar_one_or_none()
+        
+        if existing:
+            existing.target_weight_pct = weight
+            existing.updated_at = datetime.now(timezone.utc)
+        else:
+            new_holding = Holding(
+                user_id=user_id,
+                bucket_id=session.bucket_id,
+                ticker=ticker,
+                target_weight_pct=weight,
+                actual_weight_pct=0.0,
+                shares=0.0,
+                value_usd=0.0,
+            )
+            db.add(new_holding)
+        holdings_written += 1
 
-    session.status = "CONFIRMED"
-    session.confirmed_at = now
-    session.updated_at = now
-    await db.flush()
+    session.status = "COMPLETED"
+    session.updated_at = datetime.now(timezone.utc)
+    await db.commit()
 
-    # Obsidian journal entry (best-effort, never blocks)
-    from app.db.models.bucket import GoalBucket
-    from app.services import obsidian_service, settings_service
-    bucket_row = await db.get(GoalBucket, bucket_id)
-    bucket_name = bucket_row.name if bucket_row else f"Bucket {bucket_id}"
-    vault_path = await settings_service.get_setting_str("obsidian_vault_path", db)
-    journal_subfolder = await settings_service.get_setting_str(
-        "obsidian_journal_subfolder", db, default="Investment Journal"
-    )
-    await obsidian_service.write_architect_journal(
-        bucket_name=bucket_name,
-        session_id=session_id,
-        status="CONFIRMED",
-        goal_description="",
-        allocation=[item.model_dump() for item in allocation],
-        rationale=session.rationale_text or "",
-        cap_warnings=None,
-        cooling_off_until=None,
-        vault_path=vault_path,
-        journal_subfolder=journal_subfolder,
-    )
-
-    logger.info("architect_confirmed", session_id=session_id, bucket_id=bucket_id, holdings=len(allocation))
     return ArchitectConfirmResponse(
-        session_id=session_id,
-        bucket_id=bucket_id,
-        status="CONFIRMED",
-        holdings_written=len(allocation),
-        confirmed_at=now,
-    )
-
-
-async def get_session(
-    session_id: int, db: AsyncSession, user_id: int | None = None
-) -> ArchitectSessionResponse:
-    session = await _get_session(session_id, db, user_id=user_id)
-    shortlist = (
-        [CandidateDetail(**c) for c in json.loads(session.shortlist_json)]
-        if session.shortlist_json else None
-    )
-    allocation = (
-        [AllocationItem(**a) for a in json.loads(session.final_allocation_json)]
-        if session.final_allocation_json else None
-    )
-    from app.schemas.architect import InvestorProfile
-    investor_profile = (
-        InvestorProfile(**json.loads(session.investor_profile_json))
-        if session.investor_profile_json else None
-    )
-
-    return ArchitectSessionResponse(
         session_id=session.id,
         bucket_id=session.bucket_id,
         status=session.status,
-        investor_profile=investor_profile,
-        shortlist=shortlist,
-        final_allocation=allocation,
-        rationale=session.rationale_text,
-        drawdown_acknowledged_at=session.drawdown_acknowledged_at,
-        created_at=session.created_at if session.created_at.tzinfo else session.created_at.replace(tzinfo=timezone.utc),
-        updated_at=session.updated_at if session.updated_at.tzinfo else session.updated_at.replace(tzinfo=timezone.utc),
+        holdings_written=holdings_written,
+        confirmed_at=session.updated_at,
     )

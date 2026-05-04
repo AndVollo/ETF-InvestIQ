@@ -191,8 +191,6 @@
     "step1_subtitle": "Click to build a detailed prompt with hard eligibility, fundamental + technical criteria, and trusted data sources. Copy it into ChatGPT or Claude.",
     "generate_prompt": "Generate prompt",
     "copy_prompt": "Copy prompt",
-    "open_finviz": "Open finviz screener",
-    "finviz_hint": "The finviz link opens a free, manually-browsable ETF screener with sane filters (liquidity, market cap). Use it to spot interesting tickers, then mention them to the AI in your follow-up — finviz's free tier does not allow programmatic scraping.",
     "step2_paste": "Step 2 — Paste AI response",
     "step2_subtitle": "Paste the JSON the AI returned. Backend validates each ETF (TER, AUM, bucket, duplicates, blacklist) and only adds the safe ones.",
     "import_json": "Import",

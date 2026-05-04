@@ -252,12 +252,11 @@ PART C — TECHNICAL CRITERIA (sanity check, not a stock-picking signal)
 ═══════════════════════════════════════════════════════════════════
 PART D — DATA SOURCES TO CONSULT BEFORE SUGGESTING
 ═══════════════════════════════════════════════════════════════════
-You MUST verify each candidate against multiple sources. Cite the source you used in `evidence_sources`. Suggested sources (use the ones you have current data for):
-  - https://finviz.com/screener.ashx?v=111&f=ind_exchangetradedfund   (free ETF screener)
+You MUST verify each candidate against multiple sources. Cite the source you used in `evidence_sources`. Suggested sources:
   - https://www.etf.com   (factsheets, holdings, comparisons)
   - https://www.morningstar.com   (ratings, fund analysis)
   - https://www.justetf.com   (UCITS-specific factsheets, very strong for IE/LU funds)
-  - Issuer's official factsheet PDF (Vanguard, iShares, etc.) — most authoritative for TER and AUM
+  - Issuer's official factsheet PDF (Vanguard, iShares, etc.)
   - Yahoo Finance / yfinance (historical prices, dividend yield)
 
 If you do NOT have current data on a candidate, DO NOT include it. Better to suggest 3 well-verified ETFs than 10 guesses.
@@ -270,7 +269,8 @@ PART E — BUCKETS (categories you may target)
 ═══════════════════════════════════════════════════════════════════
 PART F — OUTPUT FORMAT
 ═══════════════════════════════════════════════════════════════════
-Return ONLY valid JSON. No prose before or after. No markdown code fences. No comments.
+Return ONLY valid JSON. 
+CRITICAL: You MUST escape all double quotes within strings using a backslash (e.g. \"ארה\\\"ב\"). Failure to escape quotes in Hebrew text (like acronyms) will break the parser.
 
 {{
   "items": [
@@ -287,14 +287,12 @@ Return ONLY valid JSON. No prose before or after. No markdown code fences. No co
       "inception": "2010-01-15",
       "description_en": "One-line factual description (what it tracks)",
       "description_he": "תיאור עובדתי בשורה אחת (מה הקרן עוקבת אחריו)",
-      "fundamental_notes": "1-2 sentences on why this ETF is a strong fundamental pick (tracking error, holdings quality, issuer reputation).",
-      "technical_notes": "1 sentence on current technical posture (vs SMA200, 52w position). Plain factual, no forecasts.",
-      "evidence_sources": ["finviz.com", "issuer factsheet"]
+      "fundamental_notes": "1-2 sentences on why this ETF is a strong fundamental pick.",
+      "technical_notes": "1 sentence on current technical posture.",
+      "evidence_sources": ["etf.com", "issuer factsheet"]
     }}
   ]
 }}
-
-The backend will validate every field; bad/missing values get rejected silently. Quality > quantity. If you have nothing strong to add, return {{"items": []}}.
 """
 
 
