@@ -265,11 +265,42 @@ async def rank_within_bucket(
     bucket_name: str, db: AsyncSession, rf_rate: float = 0.045
 ) -> list[ScoredETF]:
     etfs = get_etfs_in_bucket(bucket_name)
+    # Bulk fetch cached scores for all tickers in bucket
+    tickers = [etf["ticker"] for etf in etfs]
+    from app.db.models.etf_scores_cache import ETFScoresCache
+    result = await db.execute(
+        select(ETFScoresCache).where(ETFScoresCache.ticker.in_(tickers))
+    )
+    cache_map = {row.ticker: row for row in result.scalars().all()}
+
     results: list[ScoredETF] = []
     for etf in etfs:
-        scored = await calculate_composite_score(etf["ticker"], db, rf_rate)
-        if scored:
-            results.append(scored)
+        ticker = etf["ticker"]
+        row = cache_map.get(ticker)
+        
+        # Check if cache is valid
+        if row and _utc(row.expires_at) >= datetime.now(timezone.utc):
+            comp = ComponentScores(
+                cost=row.cost_score or NEUTRAL_SCORE,
+                sharpe_3y=row.sharpe_score or NEUTRAL_SCORE,
+                tracking_error=row.tracking_error_score or NEUTRAL_SCORE,
+                liquidity_aum=row.liquidity_score or NEUTRAL_SCORE,
+                sharpe_computed=bool(row.sharpe_score),
+            )
+            results.append(ScoredETF(
+                ticker=ticker,
+                name=etf["name"],
+                bucket=etf["bucket"],
+                ter=etf["ter"],
+                aum_b=etf.get("aum_b", 0.0),
+                composite_score=comp.composite,
+                components=comp,
+            ))
+        else:
+            # Recalculate if missing or expired
+            scored = await calculate_composite_score(ticker, db, rf_rate, use_cache=True)
+            if scored:
+                results.append(scored)
 
     results.sort(key=lambda x: x.composite_score, reverse=True)
     for i, s in enumerate(results, start=1):

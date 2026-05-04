@@ -323,7 +323,7 @@ async def select_auto_candidates(
         if not eligible:
             # Fallback: use raw universe order sorted by TER ascending
             from app.services.universe_service import get_etfs_in_bucket
-            raw = sorted(get_etfs_in_bucket(bucket_name), key=lambda e: e.get("ter", 1.0))
+            raw = sorted(get_etfs_in_bucket(bucket_name), key=lambda e: e.get("ter") if e.get("ter") is not None else 1.0)
             eligible_tickers = [
                 e["ticker"] for e in raw if not is_blacklisted(e["ticker"])[0]
             ][:k]

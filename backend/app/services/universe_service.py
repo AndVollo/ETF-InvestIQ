@@ -180,8 +180,8 @@ def is_blacklisted(ticker: str) -> tuple[bool, str]:
 
     meta = get_etf_metadata(ticker)
     if meta:
-        ter = meta.get("ter", 0.0)
-        if ter > HIGH_TER_THRESHOLD and ticker not in HIGH_TER_EXCEPTIONS:
+        ter = meta.get("ter")
+        if ter is not None and ter > HIGH_TER_THRESHOLD and ticker not in HIGH_TER_EXCEPTIONS:
             return True, f"TER {ter:.2%} exceeds {HIGH_TER_THRESHOLD:.2%} threshold"
 
     return False, ""
