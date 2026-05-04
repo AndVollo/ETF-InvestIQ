@@ -105,7 +105,7 @@ def _generate_discovery_prompt(
 - Current Capital: {f"{symbol}{profile.current_capital:,.0f}" if profile.current_capital else "Not specified"}
 - Target Amount: {f"{symbol}{profile.target_amount:,.0f}" if profile.target_amount else "Not specified"}
 - Monthly Deposit: {f"{symbol}{profile.monthly_deposit:,.0f}" if profile.monthly_deposit else "Not specified"}
-- Bucket horizon: {getattr(bucket, 'horizon_type', 'LONG')}
+- Bucket Horizon: {profile.horizon_type}
 - Risk notes: {profile.risk_notes or "None"}
 
 ## Rules (STRICT — do not violate)
@@ -355,11 +355,15 @@ async def auto_select_and_ingest(
         raise ValidationError("error.architect_no_bucket", {"session_id": session_id})
 
     bucket = await get_active_bucket(session.bucket_id, db)
-    tickers, picks = await select_auto_candidates(bucket.horizon_type, db)
+    horizon = bucket.horizon_type
+    if session.investor_profile_json and "horizon_type" in session.investor_profile_json:
+        horizon = session.investor_profile_json["horizon_type"]
+
+    tickers, picks = await select_auto_candidates(horizon, db)
     logger.info(
         "architect_auto_selected",
         session_id=session_id,
-        horizon=bucket.horizon_type,
+        horizon=horizon,
         count=len(tickers),
         picks=picks,
     )

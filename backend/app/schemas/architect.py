@@ -11,6 +11,7 @@ class InvestorProfile(BaseModel):
     current_capital: float | None = Field(default=None, gt=0)
     target_amount: float | None = Field(default=None, gt=0)
     monthly_deposit: float | None = Field(default=None, gt=0)
+    horizon_type: str = Field(default="LONG") # SHORT, MEDIUM, LONG
     currency: str = Field(default="USD")
     risk_notes: str | None = Field(default=None, max_length=300)
 

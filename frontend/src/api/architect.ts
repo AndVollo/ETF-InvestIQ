@@ -22,7 +22,7 @@ export const useStartArchitectSession = () => {
   return useMutation<
     ArchitectStartResponse,
     unknown,
-    { bucket_id: number; investor_profile: { goal_description: string; current_capital?: number; target_amount?: number; monthly_deposit?: number; currency?: string; risk_notes?: string } }
+    { bucket_id: number; investor_profile: { goal_description: string; horizon_type: string; current_capital?: number; target_amount?: number; monthly_deposit?: number; currency?: string; risk_notes?: string } }
   >({
     mutationFn: (data) =>
       client.post<ArchitectStartResponse>('/architect/sessions', data).then(r => r.data),

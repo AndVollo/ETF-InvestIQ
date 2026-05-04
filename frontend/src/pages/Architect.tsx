@@ -38,6 +38,7 @@ export default function Architect() {
   const [bucketId, setBucketId] = useState<number>(buckets[0]?.id ?? 0)
   const [sessionId, setSessionId] = useState<number>(0)
   const [goalDesc, setGoalDesc] = useState('')
+  const [horizonType, setHorizonType] = useState<'SHORT' | 'MEDIUM' | 'LONG'>('LONG')
   const [currentCapital, setCurrentCapital] = useState<number | undefined>()
   const [targetAmount, setTargetAmount] = useState<number | undefined>()
   const [monthlyDeposit, setMonthlyDeposit] = useState<number | undefined>()
@@ -56,6 +57,13 @@ export default function Architect() {
   const currency = selectedBucket?.target_currency || 'USD'
   const symbol = currency === 'USD' ? '$' : '₪'
 
+  // Update horizon when bucket changes (as default)
+  useEffect(() => {
+    if (selectedBucket && step === 0) {
+      setHorizonType(selectedBucket.horizon_type)
+    }
+  }, [selectedBucket, step])
+
   const ingestCandidates = useIngestCandidates(sessionId)
   const autoSelect = useAutoSelectCandidates(sessionId)
   const { data: engineerPrompt } = useEngineerPrompt(sessionId)
@@ -67,6 +75,7 @@ export default function Architect() {
   useEffect(() => {
     if (session?.investor_profile && step > 0) {
       setGoalDesc(session.investor_profile.goal_description)
+      setHorizonType(session.investor_profile.horizon_type as any || 'LONG')
       setCurrentCapital(session.investor_profile.current_capital)
       setTargetAmount(session.investor_profile.target_amount)
       setMonthlyDeposit(session.investor_profile.monthly_deposit)
@@ -88,6 +97,7 @@ export default function Architect() {
       bucket_id: bucketId,
       investor_profile: {
         goal_description: goalDesc,
+        horizon_type: horizonType,
         current_capital: currentCapital,
         target_amount: targetAmount,
         monthly_deposit: monthlyDeposit,
@@ -166,6 +176,13 @@ export default function Architect() {
                   </Field>
                   <Field label={t('architect.goal_desc')}>
                     <Input value={goalDesc} onChange={(e) => setGoalDesc(e.target.value)} />
+                  </Field>
+                  <Field label={t('buckets.horizon')}>
+                    <Select value={horizonType} onChange={(e) => setHorizonType(e.target.value as any)}>
+                      <option value="SHORT">{t('buckets.horizon_short')}</option>
+                      <option value="MEDIUM">{t('buckets.horizon_medium')}</option>
+                      <option value="LONG">{t('buckets.horizon_long')}</option>
+                    </Select>
                   </Field>
                   <Field label={t('architect.current_capital')}>
                     <InputGroup prefix={symbol}>
@@ -439,6 +456,10 @@ export default function Architect() {
                       <div>
                         <div className="text-muted">{t('architect.goal_desc')}</div>
                         <div style={{ fontWeight: 500 }}>{session.investor_profile.goal_description}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted">{t('buckets.horizon')}</div>
+                        <div style={{ fontWeight: 500 }}>{t(`buckets.horizon_${session.investor_profile.horizon_type.toLowerCase()}`)}</div>
                       </div>
                       <div>
                         <div className="text-muted">{t('architect.current_capital')}</div>

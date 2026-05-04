@@ -412,6 +412,7 @@ export interface ArchitectSessionResponse {
   status: string
   investor_profile: {
     goal_description: string
+    horizon_type: string
     current_capital: number | null
     target_amount: number | null
     monthly_deposit: number | null
