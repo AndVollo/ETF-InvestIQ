@@ -28,6 +28,14 @@ export const useValuation = (ticker: string) =>
     staleTime: 1000 * 60 * 5,
   })
 
+export const useETFDetail = (ticker: string) =>
+  useQuery<import('@/types/api').ETFDetailResponse>({
+    queryKey: ['etf-detail', ticker],
+    queryFn: () => client.get<import('@/types/api').ETFDetailResponse>(`/universe/detail/${ticker}`).then(r => r.data),
+    enabled: !!ticker,
+    staleTime: 1000 * 60 * 30, // Detail info is more stable
+  })
+
 // ── Admin: ETFs ──────────────────────────────────────────────────────────────
 export const useAdminETFs = (includeInactive = false) =>
   useQuery<UniverseETFAdmin[]>({

@@ -287,8 +287,10 @@ async def rank_within_bucket(
         ticker = etf["ticker"]
         row = cache_map.get(ticker)
         
-        # Check if cache is valid
-        if row and _utc(row.expires_at) >= datetime.now(timezone.utc):
+        # Check if cache is valid (and not just a "Neutral" placeholder if we now have history)
+        is_neutral = row and row.sharpe_score == NEUTRAL_SCORE and not (row.components_json and json.loads(row.components_json).get("sharpe_computed"))
+        
+        if row and _utc(row.expires_at) >= datetime.now(timezone.utc) and not is_neutral:
             comp = ComponentScores(
                 cost=row.cost_score if row.cost_score is not None else NEUTRAL_SCORE,
                 sharpe_3y=row.sharpe_score if row.sharpe_score is not None else NEUTRAL_SCORE,

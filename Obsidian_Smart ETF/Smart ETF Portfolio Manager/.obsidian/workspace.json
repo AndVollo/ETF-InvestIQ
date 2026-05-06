@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "a83ec98bd43b7ad0",
+        "id": "23bbc6fdefe13414",
         "type": "tabs",
         "children": [
           {
-            "id": "89c0cc735097d9c0",
+            "id": "c5900d411ba09dd1",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -176,8 +176,9 @@
       "bases:Create new base": false
     }
   },
-  "active": "89c0cc735097d9c0",
+  "active": "c5900d411ba09dd1",
   "lastOpenFiles": [
+    "Investment Journal/2026-05-05-ETF-deposit.md",
     "Welcome.md"
   ]
 }

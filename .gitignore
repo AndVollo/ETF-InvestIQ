@@ -60,3 +60,6 @@ frontend/playwright-report/
 
 # Backups (generated)
 smart_etf_backup_*.db
+scratch/
+backend/scratch/
+backend/scratch_check_val.py

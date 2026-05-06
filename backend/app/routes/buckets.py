@@ -72,7 +72,7 @@ async def delete_bucket(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    if not verify_password(payload.password, current_user.hashed_password):
+    if not verify_password(payload.password, current_user.password_hash):
         raise HTTPException(status_code=403, detail="Invalid password")
 
     await bucket_service.get_user_bucket(bucket_id, current_user.id, db)

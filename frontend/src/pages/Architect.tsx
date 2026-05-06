@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import { useBuckets } from '@/api/buckets'
 import {
   useStartArchitectSession,
@@ -31,6 +32,7 @@ type Step = 0 | 1 | 2 | 3 | 4 | 5
 
 export default function Architect() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { data: bucketsData } = useBuckets()
   const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
 
@@ -57,16 +59,26 @@ export default function Architect() {
   const currency = selectedBucket?.target_currency || 'USD'
   const symbol = currency === 'USD' ? '$' : '₪'
 
-  // Update horizon when bucket changes (as default)
+  // Initialize bucketId when data arrives
+  useEffect(() => {
+    if (buckets.length > 0 && !bucketId) {
+      setBucketId(buckets[0].id)
+    }
+  }, [buckets, bucketId])
+
+  // Update profile when bucket changes (as default)
   useEffect(() => {
     if (selectedBucket && step === 0) {
-      setHorizonType(selectedBucket.horizon_type)
+      setHorizonType(selectedBucket.horizon_type as any)
+      if (selectedBucket.initial_investment) setCurrentCapital(selectedBucket.initial_investment)
+      if (selectedBucket.target_amount) setTargetAmount(selectedBucket.target_amount)
+      if (selectedBucket.description && !goalDesc) setGoalDesc(selectedBucket.description)
     }
   }, [selectedBucket, step])
 
   const ingestCandidates = useIngestCandidates(sessionId)
   const autoSelect = useAutoSelectCandidates(sessionId)
-  const { data: engineerPrompt } = useEngineerPrompt(sessionId)
+  const { data: engineerPrompt, isLoading: isPromptLoading } = useEngineerPrompt(sessionId)
   const ingestAllocation = useIngestAllocation(sessionId)
   const reviewDrawdown = useReviewDrawdown(sessionId)
   const confirmSession = useConfirmArchitectSession(sessionId)
@@ -76,13 +88,13 @@ export default function Architect() {
     if (session?.investor_profile && step > 0) {
       setGoalDesc(session.investor_profile.goal_description)
       setHorizonType(session.investor_profile.horizon_type as any || 'LONG')
-      setCurrentCapital(session.investor_profile.current_capital)
-      setTargetAmount(session.investor_profile.target_amount)
-      setMonthlyDeposit(session.investor_profile.monthly_deposit)
+      setCurrentCapital(session.investor_profile.current_capital || undefined)
+      setTargetAmount(session.investor_profile.target_amount || undefined)
+      setMonthlyDeposit(session.investor_profile.monthly_deposit || undefined)
       if (session.bucket_id) setBucketId(session.bucket_id)
     }
   }, [session, step])
-
+  
   const STEPS = [
     { label: t('architect.step1_title') },
     { label: t('architect.step2_title') },
@@ -93,19 +105,25 @@ export default function Architect() {
   ]
 
   const handleStart = async () => {
-    const res = await startSession.mutateAsync({
-      bucket_id: bucketId,
-      investor_profile: {
-        goal_description: goalDesc,
-        horizon_type: horizonType,
-        current_capital: currentCapital,
-        target_amount: targetAmount,
-        monthly_deposit: monthlyDeposit,
-        currency: currency,
-      },
-    })
-    setSessionId(res.session_id)
-    setStep(1)
+    if (!bucketId) return
+    try {
+      const res = await startSession.mutateAsync({
+        bucket_id: bucketId,
+        investor_profile: {
+          goal_description: goalDesc || 'Investment Portfolio',
+          horizon_type: horizonType,
+          current_capital: currentCapital,
+          target_amount: targetAmount,
+          monthly_deposit: monthlyDeposit,
+          currency: currency,
+        },
+      })
+      setSessionId(res.session_id)
+      setStep(1)
+    } catch (err: any) {
+      const msg = err.detail || t('common.error')
+      setToast({ msg: typeof msg === 'string' ? msg : JSON.stringify(msg), type: 'error' })
+    }
   }
 
   const handleIngestCandidates = async () => {
@@ -141,23 +159,103 @@ export default function Architect() {
     setUcitsDismissed(false)
     setShowAllUcits(false)
     setDrawdownReport(null)
-    if (res.status === 'PENDING_REVIEW') {
-      setToast({ msg: t('architect.cooling_off', { time: res.cooling_off_until ?? '' }), type: 'error' })
-    } else {
+    if (res.cooling_off_until) {
+      setToast({ msg: t('architect.cooling_off', { time: new Date(res.cooling_off_until).toLocaleString() }), type: 'error' })
+      return
+    }
+    if (res.validation_passed) {
       setStep(4)
     }
   }
 
   const handleReviewDrawdown = async () => {
-    const res = await reviewDrawdown.mutateAsync()
-    setDrawdownReport(res)
-    setStep(5)
+    if (!sessionId) return
+    try {
+      const res = await reviewDrawdown.mutateAsync()
+      setDrawdownReport(res)
+      setStep(5)
+    } catch {
+      setToast({ msg: t('common.error'), type: 'error' })
+    }
   }
 
   const handleConfirm = async () => {
-    const res = await confirmSession.mutateAsync()
-    setToast({ msg: t('architect.confirmed', { n: res.holdings_written }), type: 'success' })
+    if (!sessionId) {
+      setToast({ msg: 'Session missing. Please restart.', type: 'error' })
+      return
+    }
+    try {
+      const res = await confirmSession.mutateAsync()
+      
+      // Update active bucket in store so dashboard shows the new/updated data
+      const setActiveBucketId = useUiStore.getState().setActiveBucketId
+      setActiveBucketId(res.bucket_id)
+      queryClient.invalidateQueries({ queryKey: ['buckets'] })
+
+      setToast({ msg: t('architect.confirmed', { n: res.holdings_written }), type: 'success' })
+      setTimeout(() => navigate('/dashboard'), 1500)
+    } catch (err: any) {
+      console.error("Architect confirm failed:", err)
+      setToast({ msg: err.detail || t('common.error'), type: 'error' })
+    }
   }
+
+  const handleApplyUcits = async () => {
+    if (!ucitsAdvisory || !allocationJson) return
+    try {
+      const parsed = JSON.parse(allocationJson)
+      const suggestions = ucitsAdvisory.params.suggestions
+      
+      parsed.allocation = parsed.allocation.map((item: any) => {
+        if (suggestions[item.ticker]) {
+          // Default to the first UCITS suggestion
+          return { ...item, ticker: suggestions[item.ticker][0] }
+        }
+        return item
+      })
+      
+      const updatedJson = JSON.stringify(parsed, null, 2)
+      setAllocationJson(updatedJson)
+      
+      // Auto-re-ingest to refresh analysis and drawdown
+      const res = await ingestAllocation.mutateAsync({
+        allocation: parsed.allocation,
+        rationale: parsed.rationale ?? rationale,
+      })
+      setUcitsAdvisory(res.ucits_advisory)
+      setToast({ msg: 'UCITS peers applied successfully', type: 'success' })
+    } catch (err: any) {
+      console.error("Apply UCITS failed:", err)
+      setToast({ msg: err.detail || 'Failed to apply UCITS changes', type: 'error' })
+    }
+  }
+
+  const handleGlobalNext = async () => {
+    if (step === 0) {
+      await handleStart()
+    } else if (step === 1) {
+      await handleIngestCandidates()
+    } else if (step === 3) {
+      await handleIngestAllocation()
+    } else if (step === 4) {
+      await handleReviewDrawdown()
+    } else if (step === 5) {
+      await handleConfirm()
+    } else {
+      setStep((s) => Math.min(5, s + 1) as Step)
+    }
+  }
+
+  const isNextDisabled = () => {
+    if (step > 0 && !sessionId) return true
+    if (step === 0) return !bucketId
+    if (step === 1) return !tickersInput.trim()
+    if (step === 3) return !allocationJson.trim()
+    return false
+  }
+
+  const isNextLoading = startSession.isPending || ingestCandidates.isPending || ingestAllocation.isPending || reviewDrawdown.isPending || confirmSession.isPending
+  const nextLabel = step === 4 ? t('architect.review_drawdown') : (step === 5 ? t('architect.confirm_final') : t('common.next'))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -211,11 +309,6 @@ export default function Architect() {
                       />
                     </InputGroup>
                   </Field>
-                  <div>
-                    <Button onClick={handleStart} loading={startSession.isPending}>
-                      {t('architect.start')}
-                    </Button>
-                  </div>
                 </div>
               </Card.Body>
             </Card>
@@ -262,16 +355,6 @@ export default function Architect() {
                       onChange={(e) => setTickersInput(e.target.value)}
                     />
                   </Field>
-                  <div>
-                    <Button
-                      variant="secondary"
-                      onClick={handleIngestCandidates}
-                      loading={ingestCandidates.isPending}
-                      disabled={!tickersInput.trim()}
-                    >
-                      {t('architect.ingest')}
-                    </Button>
-                  </div>
                 </div>
               </Card.Body>
             </Card>
@@ -308,7 +391,11 @@ export default function Architect() {
                   </div>
                 )}
 
-                {engineerPrompt && (
+                {isPromptLoading ? (
+                  <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>
+                    {t('common.loading')}
+                  </div>
+                ) : engineerPrompt && (
                   <div>
                     <div className="section-title">Engineer Prompt</div>
                     <pre
@@ -354,11 +441,6 @@ export default function Architect() {
                   <Field label={t('architect.rationale')}>
                     <Input value={rationale} onChange={(e) => setRationale(e.target.value)} />
                   </Field>
-                  <div>
-                    <Button onClick={handleIngestAllocation} loading={ingestAllocation.isPending}>
-                      {t('architect.ingest')}
-                    </Button>
-                  </div>
                 </div>
               </Card.Body>
             </Card>
@@ -395,9 +477,6 @@ export default function Architect() {
                               </li>
                             ))}
                         </ul>
-                        <div className="text-muted" style={{ fontSize: 11, marginTop: 8 }}>
-                          {t('architect.ucits_disclaimer')}
-                        </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                           {!showAllUcits &&
                             Object.keys(ucitsAdvisory.params.suggestions).length > 3 && (
@@ -405,6 +484,14 @@ export default function Architect() {
                                 {t('architect.ucits_show_all')}
                               </Button>
                           )}
+                          <Button 
+                            size="sm" 
+                            variant="primary" 
+                            onClick={handleApplyUcits}
+                            loading={ingestAllocation.isPending}
+                          >
+                            {t('architect.ucits_apply_all')}
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => setUcitsDismissed(true)}>
                             {t('architect.ucits_dismiss')}
                           </Button>
@@ -436,11 +523,6 @@ export default function Architect() {
                   <div className="hint" style={{ marginTop: 12 }}>
                     <Icon name="info" size={12} /> {t('architect.drawdown_review_hint')}
                   </div>
-                  <div style={{ marginTop: 12 }}>
-                    <Button onClick={handleReviewDrawdown} loading={reviewDrawdown.isPending}>
-                      <Icon name="drawdown" size={14} /> {t('architect.review_drawdown')}
-                    </Button>
-                  </div>
                 </Card.Body>
               </Card>
             </>
@@ -463,15 +545,15 @@ export default function Architect() {
                       </div>
                       <div>
                         <div className="text-muted">{t('architect.current_capital')}</div>
-                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.current_capital || 0, currency)}</div>
+                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.current_capital || 0, currency as any)}</div>
                       </div>
                       <div>
                         <div className="text-muted">{t('architect.target_amount')}</div>
-                        <div style={{ fontWeight: 500 }}>{session.investor_profile.target_amount ? formatCurrency(session.investor_profile.target_amount, currency) : t('common.na')}</div>
+                        <div style={{ fontWeight: 500 }}>{session.investor_profile.target_amount ? formatCurrency(session.investor_profile.target_amount, currency as any) : t('common.na')}</div>
                       </div>
                       <div>
                         <div className="text-muted">{t('architect.monthly_deposit')}</div>
-                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.monthly_deposit || 0, currency)}</div>
+                        <div style={{ fontWeight: 500 }}>{formatCurrency(session.investor_profile.monthly_deposit || 0, currency as any)}</div>
                       </div>
                     </div>
                   </Card.Body>
@@ -510,28 +592,47 @@ export default function Architect() {
                   </Card.Body>
                 </Card>
               )}
-
-              <Card>
-                <Card.Body>
-                  <div className="hint" style={{ marginBottom: 12 }}>
-                    {t('architect.confirm_acknowledgement')}
-                  </div>
-                  <Button onClick={handleConfirm} loading={confirmSession.isPending}>
-                    <Icon name="check" size={14} /> {t('architect.confirm_session')}
-                  </Button>
-                </Card.Body>
-              </Card>
             </>
           )}
+        </div>
+      </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Button variant="secondary" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1) as Step)}>
-              {t('common.back')}
-            </Button>
-            <Button variant="secondary" disabled={step === 5} onClick={() => setStep((s) => Math.min(5, s + 1) as Step)}>
-              {t('common.next')} <Icon name="chevronRight" size={14} />
-            </Button>
+      <div style={{ 
+        position: 'sticky',
+        bottom: 0,
+        margin: '24px -24px -24px -24px',
+        padding: '20px 24px', 
+        background: 'var(--bg-elevated)', 
+        borderTop: '1px solid var(--border-default)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        zIndex: 100,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
+      }}>
+        {step === 5 && (
+          <div className="hint" style={{ textAlign: 'center', fontSize: 13 }}>
+            {t('architect.confirm_acknowledgement')}
           </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Button 
+            variant="secondary" 
+            size="lg"
+            disabled={step === 0} 
+            onClick={() => setStep((s) => Math.max(0, s - 1) as Step)}
+          >
+            {t('common.back')}
+          </Button>
+          <Button 
+            variant="primary" 
+            size="lg"
+            disabled={isNextDisabled()} 
+            onClick={handleGlobalNext}
+            loading={isNextLoading}
+          >
+            {nextLabel}
+          </Button>
         </div>
       </div>
 

@@ -104,6 +104,7 @@ function ETFFormModal({
       open
       title={isEdit ? `${t('manage_universe.edit_etf')} ${initial!.ticker}` : t('manage_universe.add_etf')}
       onClose={onClose}
+      width="800px"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>

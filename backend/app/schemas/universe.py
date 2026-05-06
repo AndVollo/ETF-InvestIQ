@@ -85,3 +85,22 @@ class BlacklistResponse(BaseModel):
     categories: list[BlacklistCategoryResponse]
     high_ter_threshold: float
     high_ter_exceptions: list[str]
+
+
+class ETFReturn(BaseModel):
+    period: str
+    value: float | None
+
+
+class HoldingItem(BaseModel):
+    symbol: str
+    name: str | None
+    weight: float
+
+
+class ETFDetailResponse(ETFScoreResponse):
+    returns: list[ETFReturn]
+    top_holdings: list[HoldingItem]
+    sector_weights: dict[str, float]
+    description_en: str
+    description_he: str

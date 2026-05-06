@@ -161,7 +161,12 @@
     "badge_us_dist": "US · Dist",
     "inception": "Inception",
     "insufficientHistory": "Insufficient history",
-    "manage": "Manage Universe"
+    "manage": "Manage Universe",
+    "performance": "Performance & Returns",
+    "topHoldings": "Top 10 Holdings",
+    "sectors": "Sector Exposure",
+    "keyStats": "Key Statistics",
+    "aum": "AUM"
   },
   "manage_universe": {
     "title": "Manage Universe",
@@ -243,7 +248,9 @@
     "drawdown_scenario": "Scenario",
     "drawdown_loss_pct": "Loss %",
     "drawdown_loss_usd": "Loss $",
-    "confirm_acknowledgement": "By clicking Confirm — you acknowledge the potential loss size."
+    "confirm_acknowledgement": "By clicking Confirm — you acknowledge the potential loss size.",
+    "confirm_final": "Confirm Portfolio",
+    "ucits_apply_all": "Apply All Suggestions"
   },
   "sectors": {
     "title": "Sector Analysis",

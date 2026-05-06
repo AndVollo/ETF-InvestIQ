@@ -66,9 +66,11 @@ def compute_52w_percentile(prices: list[float]) -> float | None:
     if len(window) < 2:
         return None
     lo, hi = min(window), max(window)
-    if hi == lo:
-        return 50.0
-    return round((window[-1] - lo) / (hi - lo) * 100, 2)
+    diff = hi - lo
+    if diff < 1e-7:
+        return 100.0
+    val = (window[-1] - lo) / diff * 100
+    return round(max(0.0, min(100.0, val)), 2)
 
 
 def compute_sma200_deviation(prices: list[float]) -> float | None:

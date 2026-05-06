@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBuckets } from '@/api/buckets'
 import { useDepositHistory } from '@/api/deposits'
@@ -11,8 +12,18 @@ export default function AuditTrail() {
   const { data: bucketsData } = useBuckets()
   const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
   const activeBucketId = useUiStore((s) => s.activeBucketId)
+  const setActiveBucketId = useUiStore((s) => s.setActiveBucketId)
   const bucketId = activeBucketId ?? buckets[0]?.id ?? 0
   const activeBucket = buckets.find((b) => b.id === bucketId)
+
+  useEffect(() => {
+    if (buckets.length > 0) {
+      const isValid = activeBucketId != null && buckets.some(b => b.id === activeBucketId)
+      if (!isValid) {
+        setActiveBucketId(buckets[0].id)
+      }
+    }
+  }, [activeBucketId, buckets, setActiveBucketId])
 
   const { data: history } = useDepositHistory(bucketId)
 

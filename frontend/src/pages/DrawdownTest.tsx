@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBuckets } from '@/api/buckets'
 import { useLatestSimulation, useRunSimulation } from '@/api/drawdown'
@@ -49,7 +50,17 @@ export default function DrawdownTest() {
   const { data: bucketsData } = useBuckets()
   const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
   const activeBucketId = useUiStore((s) => s.activeBucketId)
+  const setActiveBucketId = useUiStore((s) => s.setActiveBucketId)
   const bucketId = activeBucketId ?? buckets[0]?.id ?? 0
+
+  useEffect(() => {
+    if (buckets.length > 0) {
+      const isValid = activeBucketId != null && buckets.some(b => b.id === activeBucketId)
+      if (!isValid) {
+        setActiveBucketId(buckets[0].id)
+      }
+    }
+  }, [activeBucketId, buckets, setActiveBucketId])
 
   const { data: sim, isLoading: simLoading } = useLatestSimulation(bucketId)
   const runSim = useRunSimulation(bucketId)

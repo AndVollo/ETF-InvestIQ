@@ -33,7 +33,11 @@ client.interceptors.response.use(
     if (data?.message_key) {
       return Promise.reject(data)
     }
-    return Promise.reject({ message_key: 'error.internal', params: {} })
+    // Pass through detail if it exists (common for FastAPI validation errors)
+    if (data?.detail) {
+      return Promise.reject(data)
+    }
+    return Promise.reject(err)
   }
 )
 

@@ -178,22 +178,27 @@ async def _get_price_series(tickers: list[str], db: AsyncSession) -> dict[str, l
 # Number of candidates to pick per bucket based on horizon
 _BUCKET_ALLOCATION_BY_HORIZON = {
     "LONG": {
-        "GLOBAL_CORE": 3,
-        "DOMESTIC_CORE": 2,
-        "SATELLITE_THEMATIC": 3,
-        "FIXED_INCOME_CASH": 1,
+        "GLOBAL_CORE": 5,
+        "US_FACTOR_VALUE": 3,
+        "INTL_FACTOR_VALUE": 3,
+        "US_FACTOR_MOMENTUM": 2,
+        "EMERGING_MARKETS": 3,
+        "TECH_GROWTH": 3,
+        "REITS": 2,
+        "COMMODITIES_HEDGE": 2,
     },
     "MEDIUM": {
-        "GLOBAL_CORE": 2,
-        "DOMESTIC_CORE": 1,
-        "SATELLITE_THEMATIC": 1,
-        "FIXED_INCOME_CASH": 2,
+        "GLOBAL_CORE": 4,
+        "US_FACTOR_VALUE": 2,
+        "INTL_FACTOR_VALUE": 2,
+        "US_BONDS": 4,
+        "EMERGING_MARKETS": 2,
+        "REITS": 1,
     },
     "SHORT": {
-        "GLOBAL_CORE": 1,
-        "DOMESTIC_CORE": 0,
-        "SATELLITE_THEMATIC": 0,
-        "FIXED_INCOME_CASH": 3,
+        "GLOBAL_CORE": 2,
+        "US_BONDS": 3,
+        "ULTRA_SHORT_TERM": 3,
     },
 }
 
@@ -490,8 +495,17 @@ async def ingest_allocation(
     # 2. Check shortlist membership
     shortlist = [CandidateDetail(**c) for c in json.loads(session.shortlist_json or "[]")]
     valid_tickers = {c.ticker for c in shortlist if c.is_valid}
+    
+    # Expand allowed tickers to include UCITS peers of the shortlisted tickers
+    allowed_tickers = set(valid_tickers)
+    from app.services.universe_service import get_ucits_alternatives
+    for t in valid_tickers:
+        alts = get_ucits_alternatives(t)
+        if alts:
+            allowed_tickers.update(alts)
+
     for item in allocation:
-        if item.ticker not in valid_tickers:
+        if item.ticker not in allowed_tickers:
             raise ValidationError("error.architect_ticker_not_in_shortlist", {"ticker": item.ticker})
 
     # 3. UCITS nudge
@@ -499,12 +513,12 @@ async def ingest_allocation(
     # We could pull this from user settings in the future.
     ucits = check_ucits_eligibility({a.ticker: a.weight_pct for a in allocation}, is_us_citizen=False)
 
-    # 4. Save
+    session.rationale_text = rationale
     session.final_allocation_json = json.dumps([a.model_dump() for a in allocation])
-    session.rationale = rationale
     session.status = "PENDING_REVIEW"
     session.updated_at = datetime.now(timezone.utc)
-    await db.flush()
+    
+    await db.commit()
 
     return AllocationIngestResponse(
         session_id=session_id,
@@ -523,7 +537,7 @@ async def review_drawdown(
     if not session.final_allocation_json:
         raise ValidationError("error.architect_no_allocation", {"session_id": session_id})
 
-    from app.services.drawdown_service import simulate_drawdown
+    from app.services.drawdown_service import simulate_proposed_allocation
     
     allocation = {
         item["ticker"]: item["weight_pct"]
@@ -534,11 +548,11 @@ async def review_drawdown(
     profile = json.loads(session.investor_profile_json or "{}")
     current_capital = profile.get("current_capital", 0.0)
 
-    report = await simulate_drawdown(allocation, current_capital, db)
+    report = await simulate_proposed_allocation(allocation, current_capital, db)
     
     session.drawdown_acknowledged_at = datetime.now(timezone.utc)
     session.status = "CONFIRMED_READY"
-    await db.flush()
+    await db.commit()
     
     return report
 
@@ -563,17 +577,15 @@ async def confirm_session(
         existing = (await db.execute(q)).scalar_one_or_none()
         
         if existing:
-            existing.target_weight_pct = weight
+            existing.target_pct = weight
             existing.updated_at = datetime.now(timezone.utc)
         else:
             new_holding = Holding(
-                user_id=user_id,
                 bucket_id=session.bucket_id,
                 ticker=ticker,
-                target_weight_pct=weight,
-                actual_weight_pct=0.0,
-                shares=0.0,
-                value_usd=0.0,
+                target_pct=weight,
+                units=0.0,
+                is_archived=False,
             )
             db.add(new_holding)
         holdings_written += 1

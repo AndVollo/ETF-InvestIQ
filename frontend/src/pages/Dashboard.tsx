@@ -65,10 +65,15 @@ export default function Dashboard() {
   const buckets = (bucketsData ?? []).filter((b) => !b.is_archived)
   const resolvedId = activeBucketId ?? buckets[0]?.id ?? 0
 
-  // Auto-set the first bucket as active if none chosen yet
+  // Auto-set the first bucket as active if none chosen yet or if active ID is invalid for this user
   useEffect(() => {
-    if (activeBucketId == null && buckets[0]) {
-      setActiveBucketId(buckets[0].id)
+    if (buckets.length > 0) {
+      const isValid = activeBucketId != null && buckets.some(b => b.id === activeBucketId)
+      // Only auto-set if we have NO bucket chosen. 
+      // If we HAVE an ID but it's not in the list yet, we might be waiting for cache invalidation.
+      if (activeBucketId === null) {
+        setActiveBucketId(buckets[0].id)
+      }
     }
   }, [activeBucketId, buckets, setActiveBucketId])
 

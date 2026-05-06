@@ -173,6 +173,23 @@ export interface ETFScoreResponse {
   rank: number
 }
 
+export interface ETFReturn {
+  period: string
+  value: number | null
+}
+
+export interface HoldingItem {
+  symbol: string
+  name: string | null
+  weight: number
+}
+
+export interface ETFDetailResponse extends ETFScoreResponse {
+  returns: ETFReturn[]
+  top_holdings: HoldingItem[]
+  sector_weights: Record<string, number>
+}
+
 export interface BucketInfo {
   name: string
   description_en: string

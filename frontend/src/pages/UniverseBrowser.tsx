@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { useUniverse, useValuation } from '@/api/universe'
+import { useUniverse, useValuation, useETFDetail } from '@/api/universe'
 import type { ETFScoreResponse } from '@/types/api'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { useUiStore } from '@/store/uiStore'
@@ -53,94 +53,173 @@ function ScoreRow({ label, value, suffix = '' }: { label: string; value: number 
 }
 
 function ETFDetailModal({ etf, onClose }: { etf: ETFScoreResponse; onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const { data: detail, isLoading: detailLoading } = useETFDetail(etf.ticker)
   const { data: valuation, isLoading: valLoading } = useValuation(etf.ticker)
+
+  const description = i18n.language === 'he' ? etf.description_he : etf.description_en
 
   return (
     <Modal
       open
       title={<span className="mono">{etf.ticker}</span>}
       onClose={onClose}
+      width="900px"
+      minHeight="700px"
       footer={<Button variant="secondary" onClick={onClose}>{t('common.close')}</Button>}
     >
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 18, fontWeight: 600 }}>{etf.name}</div>
-        <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
-          {etf.bucket} • {etf.ticker}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>{etf.name}</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+          <Badge variant="muted">{etf.bucket}</Badge>
+          <DomicileBadge etf={etf} />
         </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div>
-          <div className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {t('universe.ter')}
+        {description && (
+          <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+            {description}
           </div>
-          <div className="tnum" style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>
-            {etf.ter != null ? `${(etf.ter * 100).toFixed(3)}%` : '—'}
-          </div>
-        </div>
-        <div>
-          <div className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {t('universe.inception')}
-          </div>
-          <div className="tnum" style={{ fontSize: 14, fontWeight: 500, marginTop: 4 }}>
-            {etf.inception || '—'}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-          {t('universe.compositeScore')}
-        </div>
-        {etf.composite_score != null ? (
-          <Badge variant={scoreVariant(etf.composite_score)}>
-            {etf.composite_score?.toFixed(1)} / 10
-          </Badge>
-        ) : (
-          <Badge>{t('common.na')}</Badge>
         )}
       </div>
 
-      <div>
-        <div className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-          {t('universe.componentScores')}
-        </div>
-        {/* Support both component_scores (new) and components (legacy) to prevent crashes during reload/cache mismatch */}
-        {(() => {
-          const scores = etf.component_scores || (etf as any).components
-          return (
-            <>
-              <ScoreRow label={t('universe.costScore')} value={scores?.cost} />
-              <ScoreRow
-                label={t('universe.sharpeScore')}
-                value={scores?.sharpe_computed ? scores?.sharpe_3y : null}
-                suffix={!scores?.sharpe_computed ? ` (${t('universe.insufficientHistory')})` : ''}
-              />
-              <ScoreRow label={t('universe.trackingError')} value={scores?.tracking_error} />
-              <ScoreRow label={t('universe.liquidityAum')} value={scores?.liquidity_aum} />
-            </>
-          )
-        })()}
-      </div>
-
-      <div>
-        <div className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-          {t('universe.valuation')}
-        </div>
-        {valLoading ? (
-          <Spinner />
-        ) : valuation ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <ValuationBadge classification={valuation.classification} />
-            <ScoreRow label={t('universe.zScore')} value={valuation.z_score} />
-            <ScoreRow
-              label={t('universe.percentile52w')}
-              value={valuation.percentile_52w != null ? valuation.percentile_52w * 100 : null}
-            />
-            <ScoreRow label={t('universe.sma200Dev')} value={valuation.sma200_deviation} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Performance section */}
+          <div>
+            <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+              {t('universe.performance', { defaultValue: 'Performance & Returns' })}
+            </div>
+            {detailLoading ? <Spinner /> : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                {detail?.returns.map(r => (
+                  <Card key={r.period} style={{ padding: '8px', textAlign: 'center', background: 'var(--bg-subtle)' }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>{r.period}</div>
+                    <div className="tnum" style={{ 
+                      fontSize: 13, 
+                      fontWeight: 600, 
+                      color: r.value != null ? (r.value >= 0 ? 'var(--success)' : 'var(--danger)') : 'var(--text-muted)'
+                    }}>
+                      {r.value != null ? `${r.value > 0 ? '+' : ''}${r.value.toFixed(1)}%` : '—'}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
-        ) : null}
+
+          {/* Holdings section */}
+          <div>
+            <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+              {t('universe.topHoldings', { defaultValue: 'Top 10 Holdings' })}
+            </div>
+            {detailLoading ? <Spinner /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {detail?.top_holdings.map((h, idx) => (
+                  <div key={h.symbol || idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 8px', borderRadius: 4, background: idx % 2 === 0 ? 'transparent' : 'var(--bg-subtle)', fontSize: 13 }}>
+                    <div style={{ display: 'flex', gap: 8, overflow: 'hidden' }}>
+                      <span className="mono text-muted" style={{ width: 45, flexShrink: 0 }}>{h.symbol}</span>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.name}</span>
+                    </div>
+                    <span className="tnum" style={{ fontWeight: 500, flexShrink: 0 }}>{h.weight.toFixed(2)}%</span>
+                  </div>
+                ))}
+                {detail?.top_holdings.length === 0 && <div className="text-muted" style={{ fontSize: 13 }}>{t('common.noData')}</div>}
+              </div>
+            )}
+          </div>
+
+          {/* Sector Exposure */}
+          <div>
+            <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+              {t('universe.sectors', { defaultValue: 'Sector Exposure' })}
+            </div>
+            {detailLoading ? <Spinner /> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {Object.entries(detail?.sector_weights || {})
+                  .sort((a, b) => b[1] - a[1])
+                  .slice(0, 8)
+                  .map(([sector, pct]) => (
+                    <div key={sector}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                        <span className="text-secondary">{sector}</span>
+                        <span className="tnum">{pct.toFixed(1)}%</span>
+                      </div>
+                      <div style={{ height: 4, background: 'var(--bg-subtle)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--primary)', opacity: 0.7 }} />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Key Stats Card */}
+          <Card style={{ background: 'var(--bg-subtle)', border: 'none' }}>
+            <Card.Body>
+              <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                {t('universe.keyStats', { defaultValue: 'Key Statistics' })}
+              </div>
+              <ScoreRow label={t('universe.ter')} value={etf.ter != null ? etf.ter * 100 : null} suffix="%" />
+              <ScoreRow label={t('universe.aum', { defaultValue: 'AUM' })} value={etf.aum_b} suffix="B" />
+              <ScoreRow label={t('universe.inception')} value={null} suffix={etf.inception || '—'} />
+              
+              <div style={{ marginTop: 16 }}>
+                <div className="text-muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                  {t('universe.compositeScore')}
+                </div>
+                {etf.composite_score != null ? (
+                  <Badge variant={scoreVariant(etf.composite_score)}>
+                    {etf.composite_score?.toFixed(1)} / 10
+                  </Badge>
+                ) : (
+                  <Badge>{t('common.na')}</Badge>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Valuation section */}
+          <div>
+            <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+              {t('universe.valuation')}
+            </div>
+            {valLoading ? (
+              <Spinner />
+            ) : valuation ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <ValuationBadge classification={valuation.classification} />
+                <ScoreRow label={t('universe.zScore')} value={valuation.z_score} />
+                <ScoreRow
+                  label={t('universe.percentile52w')}
+                  value={valuation.percentile_52w}
+                  suffix="%"
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Component Scores */}
+          <div>
+            <div className="text-muted" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+              {t('universe.componentScores')}
+            </div>
+            {(() => {
+              const scores = etf.component_scores || (etf as any).components
+              return (
+                <>
+                  <ScoreRow label={t('universe.costScore')} value={scores?.cost} />
+                  <ScoreRow
+                    label={t('universe.sharpeScore')}
+                    value={scores?.sharpe_computed ? scores?.sharpe_3y : null}
+                  />
+                  <ScoreRow label={t('universe.trackingError')} value={scores?.tracking_error} />
+                  <ScoreRow label={t('universe.liquidityAum')} value={scores?.liquidity_aum} />
+                </>
+              )
+            })()}
+          </div>
+        </div>
       </div>
     </Modal>
   )

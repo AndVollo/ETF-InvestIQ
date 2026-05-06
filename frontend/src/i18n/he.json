@@ -159,7 +159,12 @@
     "badge_us_dist": "US · Dist",
     "inception": "מועד הקמה",
     "insufficientHistory": "היסטוריה לא מספקת",
-    "manage": "ניהול ה-Universe"
+    "manage": "ניהול ה-Universe",
+    "performance": "ביצועים ותשואות",
+    "topHoldings": "10 ההחזקות המובילות",
+    "sectors": "חשיפה לסקטורים",
+    "keyStats": "נתוני מפתח",
+    "aum": "נכסים מנוהלים (AUM)"
   },
   "manage_universe": {
     "title": "ניהול Universe",
@@ -241,7 +246,9 @@
     "drawdown_scenario": "תרחיש",
     "drawdown_loss_pct": "הפסד %",
     "drawdown_loss_usd": "הפסד $",
-    "confirm_acknowledgement": "בלחיצה על אישור — אתה מאשר שהבנת את גודל ההפסד הפוטנציאלי."
+    "confirm_acknowledgement": "בלחיצה על אישור — אתה מאשר שהבנת את גודל ההפסד הפוטנציאלי.",
+    "confirm_final": "אשר תיק והפקד",
+    "ucits_apply_all": "החל הצעות חיסכון"
   },
   "sectors": {
     "title": "ניתוח סקטורים",

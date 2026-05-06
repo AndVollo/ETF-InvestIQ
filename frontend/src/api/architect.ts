@@ -39,7 +39,10 @@ export const useIngestCandidates = (sessionId: number) => {
       client
         .post<CandidateIngestResponse>(`/architect/sessions/${sessionId}/candidates`, { tickers })
         .then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['architect-session', sessionId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['architect-session', sessionId] })
+      qc.invalidateQueries({ queryKey: ['engineer-prompt', sessionId] })
+    },
   })
 }
 
@@ -50,7 +53,10 @@ export const useAutoSelectCandidates = (sessionId: number) => {
       client
         .post<CandidateIngestResponse>(`/architect/sessions/${sessionId}/auto-select`)
         .then(r => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['architect-session', sessionId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['architect-session', sessionId] })
+      qc.invalidateQueries({ queryKey: ['engineer-prompt', sessionId] })
+    },
   })
 }
 

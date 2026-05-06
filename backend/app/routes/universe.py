@@ -15,9 +15,11 @@ from app.schemas.universe import (
     UniverseListResponse,
     ValidateResponse,
     ComponentScoresResponse,
+    ETFDetailResponse,
 )
 from app.services import scoring_service as svc_score
 from app.services import universe_service as svc_uni
+from app.services import etf_detail_service as svc_detail
 from app.services.fred_client import fred_client
 
 router = APIRouter(prefix="/universe", tags=["universe"])
@@ -192,3 +194,14 @@ async def get_blacklist() -> BlacklistResponse:
         high_ter_threshold=svc_uni.HIGH_TER_THRESHOLD,
         high_ter_exceptions=list(svc_uni.HIGH_TER_EXCEPTIONS),
     )
+
+
+@router.get("/detail/{ticker}", response_model=ETFDetailResponse)
+async def get_etf_detail(
+    ticker: str, db: AsyncSession = Depends(get_db)
+) -> ETFDetailResponse:
+    res = await svc_detail.get_etf_full_detail(ticker.upper(), db)
+    if not res:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="ETF not found in universe")
+    return ETFDetailResponse(**res)

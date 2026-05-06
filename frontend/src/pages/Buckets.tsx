@@ -246,11 +246,18 @@ function BucketCard({ bucket }: { bucket: Bucket }) {
                 <Button
                   variant="danger"
                   onClick={() => {
-                    deleteBucket.mutate({ id: bucket.id, password: deletePassword })
-                    setDeletePassword('')
+                    deleteBucket.mutate(
+                      { id: bucket.id, password: deletePassword.trim() },
+                      {
+                        onSuccess: () => {
+                          setShowConfirmDelete(false)
+                          setDeletePassword('')
+                        }
+                      }
+                    )
                   }}
                   loading={deleteBucket.isPending}
-                  disabled={!deletePassword}
+                  disabled={!deletePassword.trim()}
                 >
                   {t('common.delete')}
                 </Button>
@@ -271,7 +278,13 @@ function BucketCard({ bucket }: { bucket: Bucket }) {
               </div>
               {deleteBucket.isError && (
                 <p style={{ color: 'var(--danger)', fontSize: 12 }}>
-                  {t('settings.invalid_password', { defaultValue: 'Invalid password' })}
+                  {(() => {
+                    const err = deleteBucket.error as any
+                    if (err?.detail === 'Invalid password') {
+                      return t('settings.invalid_password', { defaultValue: 'Incorrect password. Action denied.' })
+                    }
+                    return err?.detail || err?.message || t('common.error')
+                  })()}
                 </p>
               )}
             </div>
